@@ -1,5 +1,6 @@
 {
 	"name": "fronty/responsive-images",
+	"type": "library",
 	"keywords": ["images", "srcset", "Wordpress", "Cloudinary", "Bootstrap 5", "Gutenberg"],
 	"description": "Library, which makes a work with images in your resposive Wordpress theme a peace of cake.",
 	"license": "MIT",
