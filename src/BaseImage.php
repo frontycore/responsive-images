@@ -4,14 +4,36 @@ namespace Fronty\ResponsiveImages;
 
 use Nette\Utils\ArrayHash;
 use Nette\Utils\Strings;
+use Nette\Utils\Html;
 
-abstract class BaseImage implements IImage
+abstract class BaseImage
 {
 	/** @var ArrayHash|null */
 	private $pathinfo;
 
 	/**
-	 * @inheritDoc
+	 * Get absolute url of original image.
+	 * @return string
+	 */
+	abstract public function getUrl(): string;
+
+	/**
+	 * Get absolute path of original image.
+	 * @return string
+	 */
+	abstract public function getPath(): string;
+
+	/**
+	 * Get <img> tag as Html.
+	 * @param ImageSize $size
+	 * @param array $attrs
+	 * @return Html
+	 */
+	abstract public function getImgTag(ImageSize $size, array $attrs = []): Html;
+
+	/**
+	 * Check if file has SVG extension.
+	 * @return bool
 	 */
 	public function isSvg(): bool
 	{
@@ -19,7 +41,8 @@ abstract class BaseImage implements IImage
 	}
 
 	/**
-	 * @inheritDoc
+	 * Get pathinfo from image URL.
+	 * @return ArrayHash
 	 */
 	public function getPathinfo(): ArrayHash
 	{
@@ -38,7 +61,7 @@ abstract class BaseImage implements IImage
 	}
 
 	/**
-	 * @inheritDoc
+	 * Output inline SVG code.
 	 */
 	public function inlineSvg()
 	{

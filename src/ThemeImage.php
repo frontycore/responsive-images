@@ -8,7 +8,7 @@ use LogicException;
 /**
  * Object to manipulate with theme images.
  */
-class ThemeImage extends BaseImage implements IImage
+class ThemeImage extends BaseImage
 {
 	/** @var string */
 	private $file;

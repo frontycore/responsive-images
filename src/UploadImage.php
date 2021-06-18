@@ -15,7 +15,7 @@ use LogicException;
  *
  * @see https://github.com/junaidbhura/auto-cloudinary/wiki/Best-Practices
  */
-class UploadImage extends BaseImage implements IImage
+class UploadImage extends BaseImage
 {
 	/** @var int */
 	private $ID;
