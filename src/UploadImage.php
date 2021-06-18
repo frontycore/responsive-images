@@ -297,17 +297,33 @@ class UploadImage extends BaseImage
 	// }
 
 	/**
-	 * Replace core/image Gutenberg block for responsiveImageTag.
-	 * @param string $blockContent
-	 * @param array $alignSizeArgs Array of responsive image sizes based on image align class.
-	 *	Keys may be following: aligncenter|alignleft|alignright|alignwide|alignfull.
-	 * 	Values of array has to comply with structure for self::getResponsiveImgTag().
-	 * 	If no class found in keys, aligncenter will be used.
+	 * Replace core/image Gutenberg block with responsiveImageTag.
+	 * @param string $blockContent HTML content of block.
+	 * @param ImageSizeList $aligncenter
+	 * @param ImageSizeList $alignleft
+	 * @param ImageSizeList $alignright
+	 * @param ImageSizeList $alignwide
+	 * @param ImageSizeList $alignfull
 	 * @return string
 	 * @see https://naswp.cz/mistrovska-optimalizace-obrazku-nejen-pro-wordpress/#nove-workflow-dodatek-obrazky-v-gutenbergu
 	 */
-	public function replaceImageBlock(string $blockContent, array $alignSizeArgs): string
+	public function replaceImageBlock(
+		string $blockContent,
+		ImageSizeList $aligncenter,
+		ImageSizeList $alignleft,
+		ImageSizeList $alignright,
+		ImageSizeList $alignwide,
+		ImageSizeList $alignfull
+	): string
 	{
+		$aligns = [
+			'aligncenter' => $aligncenter,
+			'alignleft' => $alignleft,
+			'alignright' => $alignright,
+			'alignwide' => $alignwide,
+			'alignfull' => $alignfull
+		];
+
 		$dom = new DOM();
 		$dom->loadStr($blockContent);
 
@@ -317,14 +333,13 @@ class UploadImage extends BaseImage
 		if (Strings::lower(pathinfo($img->src, PATHINFO_EXTENSION)) === 'svg') return $blockContent;
 
 		$classes = array_filter(array_map('trim', explode(' ', $figure->class)));
-		$align = 'aligncenter';
+		$sizes = $aligns['aligncenter'];
 		foreach ($classes as $class) {
-			if (isset($alignSizeArgs[$class])) {
-				$align = $class;
+			if (isset($aligns[$class])) {
+				$sizes = $aligns[$class];
 				break;
 			}
 		}
-		$sizeArgs = $alignSizeArgs[$align];
 
 		$fig = Html::el('figure', ['class' => $figure->class, 'id' => $figure->id]);
 		if ($link) {
@@ -334,7 +349,7 @@ class UploadImage extends BaseImage
 			$imgParent = $fig;
 		}
 
-		$imgTag = $this->getResponsiveImgTag($sizeArgs, [
+		$imgTag = $this->getResponsiveImgTag($sizes, [
 			'class' => $img->class,
 			'id' => $img->id,
 			'alt' => $img->alt,
