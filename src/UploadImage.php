@@ -2,11 +2,13 @@
 
 namespace Fronty\ResponsiveImages;
 
+use Fronty\ResponsiveImages\Sizes\ImageSize;
+use Fronty\ResponsiveImages\Sizes\ImageSizeList;
 use Nette\Utils\Html;
 use Nette\Utils\Strings;
+use Nette\Utils\ArrayHash;
 use enshrined\svgSanitize\Sanitizer;
 use PHPHtmlParser\Dom;
-use LogicException;
 
 /**
  * Object to manipulate with uploaded images.
@@ -23,14 +25,14 @@ class UploadImage extends BaseImage
 	/** @var Sanitizer */
 	private $sanitizer;
 
-	/** @var array Named breakpoints for self::getResponsiveImgTag(), desktop-first, ie. [xs => 575, sm => 767] */
-	private $breakpoints;
+	// /** @var array Named breakpoints for self::getResponsiveImgTag(), desktop-first, ie. [xs => 575, sm => 767] */
+	// private $breakpoints;
 
-	/** @var array Without width, height and crop (set individually) */
-	private $defaultCloudinaryTransform = [
-		'quality' => 'auto:eco',
-		'fetch_format' => 'auto'
-	];
+	// /** @var array Without width, height and crop (set individually) */
+	// private $defaultCloudinaryTransform = [
+	// 	'quality' => 'auto:eco',
+	// 	'fetch_format' => 'auto'
+	// ];
 
 	/**
 	 * Get object for image uploaded in admin by WP attachment ID.
@@ -41,19 +43,18 @@ class UploadImage extends BaseImage
 		$this->ID = $ID;
 	}
 
-	/**
-	 * Set breakpoints for image.
-	 * @param array $breakpoints
-	 * @return static
-	 */
-	public function setBreakpoints(array $breakpoints): static
-	{
-		$this->breakpoints = $breakpoints;
-		return $this;
-	}
+	// /**
+	//  * Set breakpoints for image.
+	//  * @param array $breakpoints
+	//  * @return static
+	//  */
+	// public function setBreakpoints(array $breakpoints): static
+	// {
+	// 	$this->breakpoints = $breakpoints;
+	// 	return $this;
+	// }
 
 	/**
-	 * Get URL of the original image stored in WP uploads folder.
 	 * @inheritDoc
 	 */
 	public function getUrl(): string
@@ -63,7 +64,6 @@ class UploadImage extends BaseImage
 	}
 
 	/**
-	 * Get path of the original SVG stored in WP uploads folder.
 	 * @inheritDoc
 	 */
 	public function getPath(): string
@@ -72,17 +72,16 @@ class UploadImage extends BaseImage
 	}
 
 	/**
-	 * Get image URL for given size and crop.
+	 * Get image URL, width and height for given ImageSize.
 	 * 	Crop is not performed if neither Auto Cloudinary and Fly Images plugins are available.
 	 *  For Cloudinary crop values, see https://cloudinary.com/documentation/resizing_and_cropping
-	 * @param int $width
-	 * @param int|null $height Null = proportional height.
-	 * @param string|bool $crop (true = 'fill', false = 'fit')
-	 * @param array $cloudinaryTransform
-	 * @return array [0 => URL, 1 => image width, 2 => image height]
+ 	 * @return array [0 => URL, 1 => image width, 2 => image height]
 	 */
-	public function getSizedSrc(int $width, int $height = null, $crop = 'fit', array $cloudinaryTransform = []): array
+	public function getSizedSrc(ImageSize $size): array
 	{
+		$width = $size->getWidth();
+		$height = $size->getHeight();
+
 		if ($this->isSvg()) {
 			$src = wp_get_attachment_image_src($this->ID, [$width, $height]);
 			$src[1] = $width;
@@ -90,23 +89,11 @@ class UploadImage extends BaseImage
 			return $src;
 		}
 
-		if ($crop === '1') $crop = 'fill';
-		if (!$crop) $crop = 'fit';
 		if (function_exists('cloudinary_url')) {
-			$cloudinaryTransform = array_merge(
-				$this->defaultCloudinaryTransform,
-				$cloudinaryTransform,
-				[
-					'width' => $width,
-					'height' => $height,
-					'crop' => $crop
-				]
-			);
-			return [cloudinary_url($this->ID, ['transform' => $cloudinaryTransform]), $width, $height];
+			return [cloudinary_url($this->ID, ['transform' => $size->getCloudinaryTransform()]), $width, $height];
 		}
 		if (function_exists('fly_get_attachment_image_src')) {
-			$doCrop = in_array($crop, ['crop', 'fill', 'lfill', 'fill_pad', 'thumb']);
-			return array_values(fly_get_attachment_image_src($this->ID, [$width, $height], $doCrop));
+			return array_values(fly_get_attachment_image_src($this->ID, [$width, $height], $size->hasCrop()));
 		}
 		return wp_get_attachment_image_src($this->ID, [$width, $height]);
 	}
@@ -115,27 +102,23 @@ class UploadImage extends BaseImage
 	 * Create link to image of given size.
 	 * 	Useful when creating links to open image in lightbox.
 	 * @param array $attrs Array of link HTML attributes.
-	 * @param int|null $width If null given, original image size will be used and other arguments will be ignored.
-	 * @param int|null $height Null = proportional height.
-	 * @param string|bool $crop (true = 'fill', false = 'fit')
-	 * @param array $cloudinaryTransform
+	 * @param ImageSize $size Size to which to resize the targeted image. Null - full image will be targeted.
 	 * @return Html
 	 *
 	 * @see static::getSizedSrc()
 	 */
-	public function getImgLink(array $attrs = [], int $width = null, int $height = null, $crop = 'fit', array $cloudinaryTransform = []): Html
+	public function getImgLink(array $attrs = [], ImageSize $size = null): Html
 	{
-		$attrs['href'] = ($width === null) ? $this->getUrl() : $this->getSizedSrc($width, $height, $crop, $cloudinaryTransform)[0];
+		$attrs['href'] = ($size === null) ? $this->getUrl() : $this->getSizedSrc($size)[0];
 		return Html::el('a', $attrs);
 	}
 
 	/**
 	 * @inheritDoc
-	 * @param string|bool $crop Cloudinary crop transformation, true (= crop fill) or false (= crop fit).
 	 */
-	public function getImgTag(int $width, int $height = null, array $attrs = [], $crop = 'fit'): Html
+	public function getImgTag(ImageSize $size, array $attrs = []): Html
 	{
-		$src = $this->getSizedSrc($width, $height, $crop);
+		$src = $this->getSizedSrc($size);
 		$attrs['src'] = esc_url($src[0]);
 		$attrs['width'] = $src[1];
 		$attrs['height'] = $src[2];
@@ -147,138 +130,130 @@ class UploadImage extends BaseImage
 	}
 
 	/**
-	 * @inheritDoc
-	 */
-	public function imgTag(int $width, int $height = null, array $attrs = [], $crop = 'fit')
-	{
-		echo $this->getImgTag($width, $height, $attrs, $crop);
-	}
-
-	/**
-	 * Get <img> tag with srcset.
-	 * @param array $sizeArgs
-	 * 	Array of sizes arguments.
-	 * 	Each array item represents arguments for self::getSizedSrc().
-	 * 	Keys represents either named Bootstrap breakpoint (ie. 'md', 'lg', ...) or maximal viewport width in px, for which the size should apply.
-	 * 	[
-	 * 		'md' => [360, null, 'fill'],
-	 * 		'lg' => [900, 600],
-	 * 		1600 => [1440]
-	 * 	]
+	 * Get <img> tag with responsive sizes and srcset according to given ImageSizeList.
+	 * @param ImageSizeList $sizes
 	 * @param array $attrs
 	 * @return Html
-	 *
-	 * @see self::setBreakpoints()
-	 * @see self::getSizedSrc()
 	 */
-	public function getResponsiveImgTag(array $sizeArgs, array $attrs = []): Html
+	public function getResponsiveImgTag(ImageSizeList $sizes, array $attrs = []): Html
 	{
-		$sizeArgs = $this->translateBreakpoints($sizeArgs);
+		$widest = $sizes->getWidest();
+		$maxWidth = $widest->getWidth();
+		$maxHeight = $widest->getHeight();
+
 		if ($this->isSvg()) {
-			$args = end($sizeArgs);
-			$width = $args[0];
-			$height = (!isset($args[1]) || $args[1] === null) ? $args[0] : $args[1];
-			return $this->getImgTag(intval($width), intval($height), $attrs);
+			return $this->getImgTag($maxWidth, $maxHeight ?? $maxWidth, $attrs);
 		}
 
-		$defaultSrc = call_user_func_array([$this, 'getSizedSrc'], $sizeArgs[key($sizeArgs)]);
-		if (isset($sizeArgs[0])) unset($sizeArgs[0]);
+		$sets = $this->createSrcsetSizes($sizes);
+		$widestSrc = $this->getSizedSrc($widest);
 
-		$sizes = $srcsets = [];
-		$i = 1;
-		foreach ($sizeArgs as $viewport => $args) {
-			$isLast = ($i === count($sizeArgs));
-			$src = call_user_func_array([$this, 'getSizedSrc'], $args);
-			if ($isLast) {
-				$sizes[] = $src[1] . 'px';
-			} else {
-				$sizes[] = '(max-width: ' . $viewport . 'px) ' . $src[1] . 'px';
-			}
-			$srcsets[] = esc_url($src[0]) . ' ' . $src[1] . 'w';
-			$i ++;
+		$attrs = array_merge($attrs, [
+			'src' => $widestSrc[0],
+			'sizes' => implode(', ', $sets->sizes),
+			'srcset' => implode(', ', $sets->srcsets)
+		]);
+
+		if (!isset($attrs['width'])) {
+			$attrs['width'] = $widestSrc[1];
+			$attrs['height'] = $widestSrc[2];
 		}
-
-		$attrs['src'] = esc_url($defaultSrc[0]);
-		$attrs['sizes'] = implode(', ', $sizes);
-		$attrs['srcset'] = implode(', ', $srcsets);
-		if (!isset($attrs['width'])) $attrs['width'] = $src[1];
-		if (!isset($attrs['height'])) $attrs['height'] = $src[2];
 		if (!isset($attrs['alt'])) $attrs['alt'] = $this->getDefaultAlt();
 		$attrs['alt'] = esc_attr(strip_tags($attrs['alt']));
 		$el = Html::el('img', $attrs);
+
 		apply_filters('fri_upload_responsive_img_tag', $el);
 		return $el;
 	}
 
 	/**
 	 * Output responsive image tag.
-	 * @param array $sizeArgs
+	 * @param ImageSizeList $sizes
 	 * @param array $attrs
 	 *
-	 * @see self::getResponsiveImgTag
+	 * @see static::getResponsiveImgTag()
 	 */
-	public function responsiveImgTag(array $sizeArgs, array $attrs = [])
+	public function responsiveImgTag(ImageSizeList $sizes, array $attrs = [])
 	{
-		echo $this->getResponsiveImgTag($sizeArgs, $attrs);
+		echo $this->getResponsiveImgTag($sizes, $attrs);
 	}
 
 	/**
-	 * Get img tag wrapped in span ensuring aspect-ratio before image is lazyloaded.
-	 * @param int $width Width used as img width attribute and to calculate ratio.
-	 * @param int $height Height used as img height attribute and to calculate ratio.
-	 * @param array $responsiveWidths
-	 * 	Array of either int[] widths based on viewport width, or array[] of all self::getSizedSrc() arguments [width, height, crop].
-	 * 	Keys represents either named Bootstrap breakpoint (ie. 'md', 'lg', ...) or maximal viewport width in px, for which the width should apply.
-	 * 	[
-	 * 		'md' => 360,
-	 * 		'lg' => 900,
-	 * 		1600 => [1440, 900, true]
-	 * 	]
-	 * @param array $wrapAttrs HTML arguments for ratio wrapper span.
-	 * @param array $imgAttrs HTML arguments for img tag.
+	 * Get image tag wrapped in Bootstrap 5 figure.ratio, which ensures it's aspect ratio.
+	 * 	Useful with lazyloaded images to prevent Core Web Vitals CLS.
+	 * 	To use with responsive img tag, set $sizes argument.
+	 * @param int $width Image width from which count ratio.
+	 * @param int $height Image height from which to count ratio.
+	 * @param ImageSizeList|null $sizes If given, <img> tag will be generated using getResponsiveImgTag().
+	 * @param array $wrapAttrs
+	 * @param array $imgAttrs
 	 * @return Html
+	 *
+	 * @see https://getbootstrap.com/docs/5.0/helpers/ratio/#custom-ratios
+	 * @see https://web.dev/cls/
 	 */
-	public function getAspectImgTag(int $width, int $height, array $responsiveWidths, array $wrapAttrs = [], array $imgAttrs = []): Html
+	public function getAspectImgTag(int $width, int $height, ImageSizeList $sizes = null, array $wrapAttrs = [], array $imgAttrs = []): Html
 	{
-		$sizeArgs = $responsiveWidths;
-		$maxWidth = 0;
-		foreach ($sizeArgs as &$sizeArg) {
-			$sizeArg = (is_array($sizeArg)) ? $sizeArg : [intval($sizeArg), null, false];
-			if ($sizeArg[0] > $maxWidth) $maxWidth = $sizeArg[0];
-		}
-
-		$img = $this->getResponsiveImgTag($sizeArgs, $imgAttrs);
+		if ($sizes === null) $img = $this->getImgTag(new ImageSize($width, $height), $imgAttrs);
+		else $img = $this->getResponsiveImgTag($sizes, $imgAttrs);
 
 		$ratio = $height / $width * 100;
-		return Html::el('div', $wrapAttrs)
-			->addClass('ratio')->setStyle('--bs-aspect-ratio:' . $ratio . '%; max-width:' . $maxWidth . 'px')
-			->addHtml(Html::el('figure', ['class' => 'mb-0'])->addHtml($img));
+		$el = Html::el('figure', $wrapAttrs)
+			->addClass('ratio')
+			->setStyle('--bs-aspect-ratio:' . $ratio . '%')
+			->addHtml($img);
+		apply_filters('fri_upload_aspect_img_tag', $el);
+		return $el;
 	}
 
 	/**
-	 * Output img tag wrapped in aspect-ratio ensuring span.
+	 * Output image tag wrapped in fixed ratio div.
 	 * @param int $width
 	 * @param int $height
-	 * @param array $responsiveWidths
+	 * @param ImageSizeList $sizes
 	 * @param array $wrapAttrs
 	 * @param array $imgAttrs
 	 *
-	 * @see self::getAspectImgTag()
+	 * @see static::getAspectImgTag()
 	 */
-	public function aspectImgTag(int $width, int $height, array $responsiveWidths, array $wrapAttrs = [], array $imgAttrs = [])
+	public function aspectImgTag(int $width, int $height, ImageSizeList $sizes = null, array $wrapAttrs = [], array $imgAttrs = [])
 	{
-		echo $this->getAspectImgTag($width, $height, $responsiveWidths, $wrapAttrs, $imgAttrs);
+		echo $this->getAspectImgTag($width, $height, $sizes, $wrapAttrs, $imgAttrs);
 	}
 
 	/**
+	 * Add inline SVG sanitize.
 	 * @inheritDoc
 	 */
 	public function getInlineSvg(): string
 	{
-		if (!$this->isSvg()) throw new LogicException("Image '{$this->getUrl()}' is not SVG.");
-		$svg = file_get_contents($this->getPath());
-		$svg = $this->svgUniqueClasses($svg);
-		return $this->getSanitizer()->sanitize($svg);
+		return $this->getSanitizer()->sanitize(parent::getInlineSvg());
+	}
+
+	/**
+	 * Create arrays of `srcset` and `sizes` HTML attributes for img tag.
+	 * @param ImageSizeList $imageSizes
+	 * @return ArrayHash
+	 */
+	private function createSrcsetSizes(ImageSizeList $imageSizes): ArrayHash
+	{
+		$sizes = $srcsets = [];
+		foreach ($imageSizes as $viewport => $size) {
+			$src = $this->getSizedSrc($size);
+
+			if ($imageSizes->isLast()) {
+				$sizes[] = $src[1] . 'px';
+			} else {
+				$media = ($imageSizes->isMobileFirst()) ? 'min-width' : 'max-width';
+				$sizes[] = sprintf('(%s: %dpx) %dpx', $media, $viewport, $src[1]);
+			}
+			$srcsets[] = esc_url($src[0]) . ' ' . $src[1] . 'w';
+		}
+
+		return ArrayHash::from([
+			'sizes' => $sizes,
+			'srcsets' => $srcsets
+		], false);
 	}
 
 	/**
@@ -305,21 +280,21 @@ class UploadImage extends BaseImage
 		return $this->sanitizer;
 	}
 
-	/**
-	 * Translate named breakpoints in given array's keys to viewport max withs integers, sort array asc.
-	 * @param array $sizes See self::getResponsiveImgTag()
-	 * @return array
-	 */
-	private function translateBreakpoints(array $sizes): array
-	{
-		$translated = [];
-		foreach ($sizes as $key => $args) {
-			if (isset($this->breakpoints[$key])) $key = $this->breakpoints[$key];
-			if (is_numeric($key)) $translated[$key] = $args;
-		}
-		ksort($translated);
-		return $translated;
-	}
+	// /**
+	//  * Translate named breakpoints in given array's keys to viewport max withs integers, sort array asc.
+	//  * @param array $sizes See self::getResponsiveImgTag()
+	//  * @return array
+	//  */
+	// private function translateBreakpoints(array $sizes): array
+	// {
+	// 	$translated = [];
+	// 	foreach ($sizes as $key => $args) {
+	// 		if (isset($this->breakpoints[$key])) $key = $this->breakpoints[$key];
+	// 		if (is_numeric($key)) $translated[$key] = $args;
+	// 	}
+	// 	ksort($translated);
+	// 	return $translated;
+	// }
 
 	/**
 	 * Replace core/image Gutenberg block for responsiveImageTag.

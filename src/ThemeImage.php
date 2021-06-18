@@ -2,6 +2,7 @@
 
 namespace Fronty\ResponsiveImages;
 
+use Fronty\ResponsiveImages\Sizes\ImageSize;
 use Nette\Utils\Html;
 use LogicException;
 
@@ -43,11 +44,11 @@ class ThemeImage extends BaseImage
 	/**
 	 * @inheritDoc
 	 */
-	public function getImgTag(int $width, int $height, array $attrs = []): Html
+	public function getImgTag(ImageSize $size, array $attrs = []): Html
 	{
 		$attrs['src'] = esc_url($this->getUrl());
-		$attrs['width'] = $width;
-		$attrs['height'] = $height;
+		$attrs['width'] = $size->getWidth();
+		$attrs['height'] = $size->getHeight();
 		if (!isset($attrs['alt'])) $attrs['alt'] = $this->getDefaultAlt();
 		$attrs['alt'] = esc_attr(strip_tags($attrs['alt']));
 		$el = Html::el('img', $attrs);
@@ -88,16 +89,6 @@ class ThemeImage extends BaseImage
 	 */
 	public function aspectImgTag(int $width, int $height, array $wrapAttrs = [], array $imgAttrs = []) {
 		echo $this->getAspectImgTag($width, $height, $wrapAttrs, $imgAttrs);
-	}
-
-	/**
-	 * @inheritDoc
-	 */
-	public function getInlineSvg(): string
-	{
-		if (!$this->isSvg()) throw new LogicException("Image '{$this->getUrl()}' is not SVG.");
-		$svg = file_get_contents($this->getPath());
-		return $this->svgUniqueClasses($svg);
 	}
 
 	/**

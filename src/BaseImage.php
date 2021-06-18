@@ -2,9 +2,11 @@
 
 namespace Fronty\ResponsiveImages;
 
+use Fronty\ResponsiveImages\Sizes\ImageSize;
 use Nette\Utils\ArrayHash;
 use Nette\Utils\Strings;
 use Nette\Utils\Html;
+use LogicException;
 
 abstract class BaseImage
 {
@@ -53,11 +55,25 @@ abstract class BaseImage
 	}
 
 	/**
-	 * @inheritDoc
+	 * Output <img> tag as Html.
+	 * @param ImageSize $size
+	 * @param array $attrs
+	 * @return Html
 	 */
-	public function imgTag(int $width, int $height, array $attrs = [])
+	public function imgTag(ImageSize $size, array $attrs = [])
 	{
-		echo $this->getImgTag($width, $height, $attrs);
+		echo $this->getImgTag($size, $attrs);
+	}
+
+	/**
+	 * Returns SVG code.
+	 * @return string
+	 */
+	public function getInlineSvg(): string
+	{
+		if (!$this->isSvg()) throw new LogicException("Image '{$this->getUrl()}' is not SVG.");
+		$svg = file_get_contents($this->getPath());
+		return $this->svgUniqueClasses($svg);
 	}
 
 	/**
