@@ -25,15 +25,6 @@ class UploadImage extends BaseImage
 	/** @var Sanitizer */
 	private $sanitizer;
 
-	// /** @var array Named breakpoints for self::getResponsiveImgTag(), desktop-first, ie. [xs => 575, sm => 767] */
-	// private $breakpoints;
-
-	// /** @var array Without width, height and crop (set individually) */
-	// private $defaultCloudinaryTransform = [
-	// 	'quality' => 'auto:eco',
-	// 	'fetch_format' => 'auto'
-	// ];
-
 	/**
 	 * Get object for image uploaded in admin by WP attachment ID.
 	 * @param int $ID
@@ -42,17 +33,6 @@ class UploadImage extends BaseImage
 	{
 		$this->ID = $ID;
 	}
-
-	// /**
-	//  * Set breakpoints for image.
-	//  * @param array $breakpoints
-	//  * @return static
-	//  */
-	// public function setBreakpoints(array $breakpoints): static
-	// {
-	// 	$this->breakpoints = $breakpoints;
-	// 	return $this;
-	// }
 
 	/**
 	 * @inheritDoc
@@ -280,50 +260,15 @@ class UploadImage extends BaseImage
 		return $this->sanitizer;
 	}
 
-	// /**
-	//  * Translate named breakpoints in given array's keys to viewport max withs integers, sort array asc.
-	//  * @param array $sizes See self::getResponsiveImgTag()
-	//  * @return array
-	//  */
-	// private function translateBreakpoints(array $sizes): array
-	// {
-	// 	$translated = [];
-	// 	foreach ($sizes as $key => $args) {
-	// 		if (isset($this->breakpoints[$key])) $key = $this->breakpoints[$key];
-	// 		if (is_numeric($key)) $translated[$key] = $args;
-	// 	}
-	// 	ksort($translated);
-	// 	return $translated;
-	// }
-
 	/**
 	 * Replace core/image Gutenberg block with responsiveImageTag.
 	 * @param string $blockContent HTML content of block.
-	 * @param ImageSizeList $aligncenter
-	 * @param ImageSizeList $alignleft
-	 * @param ImageSizeList $alignright
-	 * @param ImageSizeList $alignwide
-	 * @param ImageSizeList $alignfull
+	 * @param ImageSizeList $sizes
 	 * @return string
 	 * @see https://naswp.cz/mistrovska-optimalizace-obrazku-nejen-pro-wordpress/#nove-workflow-dodatek-obrazky-v-gutenbergu
 	 */
-	public function replaceImageBlock(
-		string $blockContent,
-		ImageSizeList $aligncenter,
-		ImageSizeList $alignleft,
-		ImageSizeList $alignright,
-		ImageSizeList $alignwide,
-		ImageSizeList $alignfull
-	): string
+	public function replaceImageBlock(string $blockContent, ImageSizeList $sizes): string
 	{
-		$aligns = [
-			'aligncenter' => $aligncenter,
-			'alignleft' => $alignleft,
-			'alignright' => $alignright,
-			'alignwide' => $alignwide,
-			'alignfull' => $alignfull
-		];
-
 		$dom = new DOM();
 		$dom->loadStr($blockContent);
 
@@ -333,13 +278,6 @@ class UploadImage extends BaseImage
 		if (Strings::lower(pathinfo($img->src, PATHINFO_EXTENSION)) === 'svg') return $blockContent;
 
 		$classes = array_filter(array_map('trim', explode(' ', $figure->class)));
-		$sizes = $aligns['aligncenter'];
-		foreach ($classes as $class) {
-			if (isset($aligns[$class])) {
-				$sizes = $aligns[$class];
-				break;
-			}
-		}
 
 		$fig = Html::el('figure', ['class' => $figure->class, 'id' => $figure->id]);
 		if ($link) {
