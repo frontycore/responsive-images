@@ -20,7 +20,7 @@ class ThemeImage extends BaseImage
 	 */
 	public function __construct(string $file)
 	{
-		$this->file = '/' . ltrim($file, '/');
+		$this->file = ltrim($file, '/');
 	}
 
 	/**
@@ -28,7 +28,7 @@ class ThemeImage extends BaseImage
 	 */
 	public function getUrl(): string
 	{
-		$file = get_template_directory_uri() . $file;
+		$file = get_template_directory_uri() . '/' . $file;
 		return apply_filters('fri_theme_img_url', $file, $this->file);
 	}
 
@@ -37,7 +37,7 @@ class ThemeImage extends BaseImage
 	 */
 	public function getPath(): string
 	{
-		$file = get_template_directory() . $this->file;
+		$file = get_template_directory() . '/' . $this->file;
 		return apply_filters('fri_theme_img_path', $file, $this->file);
 	}
 
@@ -52,7 +52,7 @@ class ThemeImage extends BaseImage
 		if (!isset($attrs['alt'])) $attrs['alt'] = $this->getDefaultAlt();
 		$attrs['alt'] = esc_attr(strip_tags($attrs['alt']));
 		$el = Html::el('img', $attrs);
-		apply_filters('fri_theme_img_tag', $el);
+		apply_filters('fri_theme_img_tag', $el, $size);
 		return $el;
 	}
 
