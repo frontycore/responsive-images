@@ -4,7 +4,6 @@ namespace Fronty\ResponsiveImages\Sizes;
 
 use Nette\Utils\ArrayHash;
 use InvalidArgumentException;
-use OutOfRangeException;
 
 /**
  * Generate ImageSizeList based on Bootstrap grid system.
@@ -97,14 +96,14 @@ class BootstrapSizes
 	 *	Container width is calculated including gutter, but $with should be given without it (it is added automatically).
 	 * 	If given width does contain the gutter, set $givenWithGutter to true.
 	 * @param string $breakpoint
-	 * @param int $width
+	 * @param int|null $width Null for 100% wide container
 	 * @param bool $givenWithGutter
 	 * @return static
 	 */
-	public function container(string $breakpoint, int $width, bool $givenWithGutter = false): static
+	public function container(string $breakpoint, ?int $width, bool $givenWithGutter = false): static
 	{
 		assert(isset($this->breakpoints[$breakpoint]), new InvalidArgumentException("Breakpoint '$breakpoint' doesn't exist."));
-		if (!$givenWithGutter) $width += $this->gutter;
+		if ($width !== null && !$givenWithGutter) $width += $this->gutter;
 		$this->containers[$breakpoint] = $width;
 		return $this;
 	}
@@ -122,10 +121,12 @@ class BootstrapSizes
 			$last = $col;
 
 			$imgWidth = $this->getImageWidth($breakpointName, $col->cols);
-			$sizes->append(
-				$breakpointWidth,
-				new ImageSize($imgWidth, $col->height, $col->crop, $col->cloudinaryTransform)
-			);
+			if ($imgWidth !== null) {
+				$sizes->append(
+					$breakpointWidth,
+					new ImageSize($imgWidth, $col->height, $col->crop, $col->cloudinaryTransform)
+				);
+			}
 		}
 		return $sizes;
 	}
@@ -134,20 +135,21 @@ class BootstrapSizes
 	 * Calculate image width for given breakpoint and number of columns taken.
 	 * @param string $breakpoint
 	 * @param int $cols
-	 * @return int
+	 * @return int|null Null - no width for given breakpoint found.
 	 */
-	private function getImageWidth(string $breakpoint, int $cols): int
+	private function getImageWidth(string $breakpoint, int $cols): ?int
 	{
 		$containerWidth = $this->getContainerWidth($breakpoint);
+		if ($containerWidth === null) return null;
 		return round(($containerWidth / $this->columns) * $cols) - $this->gutter;
 	}
 
 	/**
 	 * Get outer container width for given breakpoint (including side paddings).
 	 * @param string $breakpoint
-	 * @return int
+	 * @return int|null Null - no width for given breakpoint found.
 	 */
-	private function getContainerWidth(string $breakpoint): int
+	private function getContainerWidth(string $breakpoint): ?int
 	{
 		// Check if container is 100% wide
 		$hasFullContainer = (!isset($this->containers[$breakpoint]) || $this->containers[$breakpoint] === null);
@@ -157,7 +159,10 @@ class BootstrapSizes
 
 		// 100% wide containers - return next breakpoint viewport width without side paddings, without 1px for min-width
 		$nextBreakpoint = $this->getNextBreakpoint($breakpoint);
-		return $this->breakpoints[$nextBreakpoint] - 1;
+		if (isset($this->breakpoints[$nextBreakpoint])) return $this->breakpoints[$nextBreakpoint] - 1;
+
+		// No next breakpoint found
+		return null;
 	}
 
 	/**
