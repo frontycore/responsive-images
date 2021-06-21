@@ -66,16 +66,15 @@ class ThemeImage extends BaseImage
 	 */
 	public function getAspectImgTag(int $width, int $height, array $wrapAttrs = [], array $imgAttrs = []): Html
 	{
-		$wrap = Html::el('span', $wrapAttrs);
-		$wrap->addClass('imgAspect');
-		$wrap->addStyle('max-width: ' . $width . 'px');
+		$img = $this->getImgTag(new ImageSize($width, $height), $imgAttrs);
 
-		$span = $height / $width * 100;
-		$wrap->addHtml(Html::el('span', ['class' => 'imgAspect__span', 'style' => "padding-top: $span%"]));
-
-		$img = $this->getImgTag($width, $height, $imgAttrs);
-		$img->addClass('imgAspect__img');
-		return $wrap->addHtml($img);
+		$ratio = $height / $width * 100;
+		$el = Html::el('figure', $wrapAttrs)
+			->addClass('ratio')
+			->setStyle('--bs-aspect-ratio:' . $ratio . '%')
+			->addHtml($img);
+		apply_filters('fri_theme_aspect_img_tag', $el, $width, $height, $ratio);
+		return $el;
 	}
 
 	/**
