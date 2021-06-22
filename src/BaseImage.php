@@ -68,16 +68,19 @@ abstract class BaseImage
 	/**
 	 * Returns SVG code.
 	 * @return string
+	 * @throws LogicException If the image is not of SVG type. Check image using static::isSvg().
 	 */
 	public function getInlineSvg(): string
 	{
-		if (!$this->isSvg()) throw new LogicException("Image '{$this->getUrl()}' is not SVG.");
+		assert($this->isSvg(), new LogicException("Image '{$this->getUrl()}' is not SVG."));
 		$svg = file_get_contents($this->getPath());
 		return $this->svgUniqueClasses($svg);
 	}
 
 	/**
 	 * Output inline SVG code.
+	 *
+	 * @see static::getInlineSvg()
 	 */
 	public function inlineSvg()
 	{

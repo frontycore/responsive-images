@@ -63,6 +63,8 @@ class ThemeImage extends BaseImage
 	 * @param array $wrapAttrs
 	 * @param array $imgAttrs
 	 * @return Html
+	 *
+	 * @see UploadImage::getAspectImgTag()
 	 */
 	public function getAspectImgTag(int $width, int $height, array $wrapAttrs = [], array $imgAttrs = []): Html
 	{
