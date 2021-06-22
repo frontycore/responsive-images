@@ -94,13 +94,13 @@ class BootstrapSizes
 	/**
 	 * Set container width for given breakpoint.
 	 *	Container width is calculated including gutter, but $with should be given without it (it is added automatically).
-	 * 	If given width does contain the gutter, set $givenWithGutter to true.
+	 * 	If given width doesn't contain the gutter, set $givenWithGutter to false.
 	 * @param string $breakpoint
 	 * @param int|null $width Null for 100% wide container
 	 * @param bool $givenWithGutter
 	 * @return static
 	 */
-	public function container(string $breakpoint, ?int $width, bool $givenWithGutter = false): static
+	public function container(string $breakpoint, ?int $width, bool $givenWithGutter = true): static
 	{
 		assert(isset($this->breakpoints[$breakpoint]), new InvalidArgumentException("Breakpoint '$breakpoint' doesn't exist."));
 		if ($width !== null && !$givenWithGutter) $width += $this->gutter;
