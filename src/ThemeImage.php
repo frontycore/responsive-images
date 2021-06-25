@@ -28,7 +28,7 @@ class ThemeImage extends BaseImage
 	 */
 	public function getUrl(): string
 	{
-		$file = get_template_directory_uri() . '/' . $file;
+		$file = get_template_directory_uri() . '/' . $this->file;
 		return apply_filters('fri_theme_img_url', $file, $this->file);
 	}
 

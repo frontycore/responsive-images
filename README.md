@@ -47,7 +47,9 @@ img_upload($attachment_id)->responsiveImgTag($sizes, ['class' => 'img-fluid', 'a
 
 # Instalation
 
-Install the library to your theme using Composer:
+## Option 1: with Composer
+
+Recommended way to install the library is using Composer:
 
 ```
 composer require fronty/responsive-images
@@ -60,10 +62,29 @@ Include composer's autoload in `functions.php`:
 require_once(__DIR__ . '/vendor/autoload.php');
 ```
 
+## Option 2: without Composer
+
+1. [Download source code of the library](https://github.com/frontycore/responsive-images/archive/refs/heads/master.zip) and unzip it into your theme directory.
+1. Require files manually in `functions.php`
+
+```php
+// functions.php
+
+require_once(__DIR__ . '/responsive-images-master/src/Sizes/ImageSize.php');
+require_once(__DIR__ . '/responsive-images-master/src/Sizes/ImageSizeList.php');
+require_once(__DIR__ . '/responsive-images-master/src/Sizes/BootstrapSizes.php'); // Required only if you use Bootstrap
+
+require_once(__DIR__ . '/responsive-images-master/src/BaseImage.php');
+require_once(__DIR__ . '/responsive-images-master/src/UploadImage.php');
+require_once(__DIR__ . '/responsive-images-master/src/ThemeImage.php');
+```
+
 
 ## WP Plugins
 
-Install **[Fly Dynamic Image Resizer](https://cs.wordpress.org/plugins/fly-dynamic-image-resizer/)** and activate it on local development version. You can use this on production as well, but you would miss the speed of CDN. On production version install, activate and configure **[Auto Cloudinary](https://wordpress.org/plugins/auto-cloudinary/)**, which will automatically upload all your images to [Cloudinary](https://cloudinary.com/) using it's fetch API.
+1. Install **[Fly Dynamic Image Resizer](https://cs.wordpress.org/plugins/fly-dynamic-image-resizer/)** and activate it on local development version. You can use this on production as well, but you would miss the speed of CDN.
+
+1. On production version install, activate and configure **[Auto Cloudinary](https://wordpress.org/plugins/auto-cloudinary/)**, which will automatically upload all your images to [Cloudinary](https://cloudinary.com/) using it's fetch API.
 
 This library decides whether to use *Fly Dynamic Image Resizer* or *Auto Cloudinary* plugin, but make sure **only one of these plugins is activated at a time**. If none of these plugins is activated, library will fall back to default Wordpress attachment getter `wp_get_attachment_image_src()` with size given as array.
 
