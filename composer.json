@@ -5,7 +5,7 @@
 	"description": "Library that will make working with images in your responsive Wordpress template a breeze.",
 	"license": "MIT",
 	"require": {
-		"php": ">=7.4",
+		"php": ">=7.3",
 		"nette/utils": "~3.2.2",
 		"enshrined/svg-sanitize": "^0.14.0",
 		"paquettg/php-html-parser": "^3.1"

@@ -44,7 +44,7 @@ class ImageSizeList implements Iterator
 	 * @param bool $mobileFirst
 	 * @return static
 	 */
-	public static function fromArray(array $imageSizes, bool $mobileFirst = true): static
+	public static function fromArray(array $imageSizes, bool $mobileFirst = true)
 	{
 		$self = new static($mobileFirst);
 		foreach ($imageSizes as $breakpoint => $imageSize) {
@@ -61,7 +61,7 @@ class ImageSizeList implements Iterator
 	 * @param ImageSize $imageSize
 	 * @return static
 	 */
-	public function append(int $breakpoint, ImageSize $imageSize): static
+	public function append(int $breakpoint, ImageSize $imageSize)
 	{
 		$this->sizes[$breakpoint] = $imageSize;
 		return $this;

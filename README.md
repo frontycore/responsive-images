@@ -132,3 +132,9 @@ The code depends on lightweight utility classes from [Nette\Utils](https://githu
 ### Other dependencies
 - [enshrined/svg-sanitize](https://github.com/darylldoyle/svg-sanitizer): Remove ids and classes of uploded SVGs before they are inlined to template.
 - [paquettg/php-html-parser](https://github.com/paquettg/php-html-parser) Replace responsive image tag in Gutenberg image block.
+
+---
+
+@todo
+	- nemazat src v lazyloadingu, misto toho dat placeholder (doplnit do konfigurace)
+	- UploadImage 

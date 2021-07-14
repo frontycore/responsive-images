@@ -83,7 +83,7 @@ class BootstrapSizes
 	 *
 	 * @see ImageSize::__construct()
 	 */
-	public function col(string $breakpoint, int $cols, int $height = null, $crop = null, array $cloudinaryTransform = []): static
+	public function col(string $breakpoint, int $cols, int $height = null, $crop = null, array $cloudinaryTransform = [])
 	{
 		assert(isset($this->breakpoints[$breakpoint]), new InvalidArgumentException("Breakpoint '$breakpoint' doesn't exist."));
 		assert($cols <= $this->columns, new InvalidArgumentException("Number of columns taken has to be lower thank or equal to total columns of {$this->columns}, {$cols} given."));
@@ -100,7 +100,7 @@ class BootstrapSizes
 	 * @param bool $givenWithGutter
 	 * @return static
 	 */
-	public function container(string $breakpoint, ?int $width, bool $givenWithGutter = true): static
+	public function container(string $breakpoint, ?int $width, bool $givenWithGutter = true)
 	{
 		assert(isset($this->breakpoints[$breakpoint]), new InvalidArgumentException("Breakpoint '$breakpoint' doesn't exist."));
 		if ($width !== null && !$givenWithGutter) $width += $this->gutter;
