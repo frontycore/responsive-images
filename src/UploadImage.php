@@ -52,6 +52,15 @@ class UploadImage extends BaseImage
 	}
 
 	/**
+	 * Check if image is still uploaded in media library.
+	 * @return bool
+	 */
+	public function hasImage(): bool
+	{
+		return (wp_get_attachment_image_src($this->ID) !== false);
+	}
+
+	/**
 	 * Get image URL, width and height for given ImageSize.
 	 * 	Crop is not performed if neither Auto Cloudinary and Fly Images plugins are available.
 	 *  For Cloudinary crop values, see https://cloudinary.com/documentation/resizing_and_cropping
@@ -59,6 +68,8 @@ class UploadImage extends BaseImage
 	 */
 	public function getSizedSrc(ImageSize $size): array
 	{
+		if (!$this->hasImage()) return ['', 0, 0];
+
 		$width = $size->getWidth();
 		$height = $size->getHeight();
 
