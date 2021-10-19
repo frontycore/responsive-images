@@ -36,11 +36,12 @@ class ImageSize
 	 * Instantiate with configuration.
 	 * @param int $width Image width
 	 * @param int $height Image height, null - proportional height according to width.
-	 * @param string|bool|null $crop How to crop image.
+	 * @param string|bool|array|null $crop How to crop image.
 	 * 	Possible options:
 	 * 	- 'fill'|true - crop image
 	 * 	- 'fit'|false - do not crop image
 	 * 	- other possible crop values for Cloudinary as described on https://cloudinary.com/documentation/resizing_and_cropping#resize_and_crop_modes
+	 * 	- array [x, y] - X and Y position of crop for Fly Dynamic Image Resizer plugin (considered as 'fill' and left on Cloudinary AI to crop properly)
 	 * 	- null - if $height is null, use 'fit', otherwise use 'fill'
 	 * @param array $cloudinaryTransform Cloudinary image transform, used in only with Auto Cloudinary. @see https://cloudinary.com/documentation/image_transformations
 	 */
@@ -75,6 +76,7 @@ class ImageSize
 	public function getCropType(): string
 	{
 		if (is_bool($this->crop)) return ($this->crop) ? 'fill' : 'fit';
+		if (is_array($this->crop)) return 'fill';
 		return $this->crop;
 	}
 
@@ -84,6 +86,17 @@ class ImageSize
 	public function hasCrop(): bool
 	{
 		return in_array($this->getCropType(), ['crop', 'fill', 'lfill', 'fill_pad', 'thumb']);
+	}
+
+	/**
+	 * Return whether to crop or particular [x, y] crop position.
+	 * 	Ideal as 3rd argument for fly_get_attachment_image_src().
+	 * @return bool|array
+	 */
+	public function getCropOrPosition()
+	{
+		if (is_array($this->crop)) return $this->crop;
+		return $this->hasCrop();
 	}
 
 	/**
