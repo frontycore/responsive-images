@@ -110,9 +110,11 @@ class UploadImage extends BaseImage
 	public function getImgTag(ImageSize $size, array $attrs = []): Html
 	{
 		$src = $this->getSizedSrc($size);
-		$attrs['src'] = esc_url($src[0]);
-		$attrs['width'] = $src[1];
-		$attrs['height'] = $src[2];
+		if ($src) {
+			$attrs['src'] = esc_url($src[0]);
+			$attrs['width'] = $src[1];
+			$attrs['height'] = $src[2];
+		}
 		if (!isset($attrs['alt'])) $attrs['alt'] = $this->getDefaultAlt();
 		$attrs['alt'] = esc_attr(strip_tags($attrs['alt']));
 		$el = Html::el('img', $attrs);
@@ -145,7 +147,7 @@ class UploadImage extends BaseImage
 			'srcset' => implode(', ', $sets->srcsets)
 		]);
 
-		if (!isset($attrs['width'])) {
+		if (!isset($attrs['width']) && $widestSrc) {
 			$attrs['width'] = $widestSrc[1];
 			$attrs['height'] = $widestSrc[2];
 		}
@@ -231,6 +233,7 @@ class UploadImage extends BaseImage
 		$sizes = $srcsets = [];
 		foreach ($imageSizes as $viewport => $size) {
 			$src = $this->getSizedSrc($size);
+			if (!$src) continue;
 
 			if ($imageSizes->isLast()) {
 				$sizes[] = $src[1] . 'px';
