@@ -39,7 +39,7 @@ abstract class BaseImage
 	 */
 	public function isSvg(): bool
 	{
-		return Strings::lower($this->getPathinfo()->extension) === 'svg';
+		return isset($this->getPathinfo()->extension) && Strings::lower($this->getPathinfo()->extension) === 'svg';
 	}
 
 	/**
