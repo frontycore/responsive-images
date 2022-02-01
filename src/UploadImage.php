@@ -141,11 +141,13 @@ class UploadImage extends BaseImage
 		$sets = $this->createSrcsetSizes($sizes);
 		$widestSrc = $this->getSizedSrc($widest);
 
-		$attrs = array_merge($attrs, [
-			'src' => $widestSrc[0],
-			'sizes' => implode(', ', $sets->sizes),
-			'srcset' => implode(', ', $sets->srcsets)
-		]);
+		if (isset($widestSrc[0])) {
+			$attrs = array_merge($attrs, [
+				'src' => $widestSrc[0],
+				'sizes' => implode(', ', $sets->sizes),
+				'srcset' => implode(', ', $sets->srcsets)
+			]);
+		}
 
 		if (!isset($attrs['width']) && $widestSrc) {
 			$attrs['width'] = $widestSrc[1];
