@@ -288,14 +288,16 @@ class UploadImage extends BaseImage
 		$dom = new DOM();
 		$dom->loadStr($blockContent);
 
+		$div = $dom->find('div', 0);
 		$figure = $dom->find('figure', 0);
 		$link = $dom->find('a', 0);
 		$img = $dom->find('img', 0);
 		if (Strings::lower(pathinfo($img->src, PATHINFO_EXTENSION)) === 'svg') return $blockContent;
 
-		$classes = array_filter(array_map('trim', explode(' ', $figure->class)));
+		$class = $figure->class;
+		if ($div) $class .= ' ' . $div->class;
 
-		$fig = Html::el('figure', ['class' => $figure->class, 'id' => $figure->id]);
+		$fig = Html::el('figure', ['class' => $class, 'id' => $figure->id]);
 		if ($link) {
 			$imgParent = Html::el('a', ['class' => $link->class, 'href' => $link->href, 'target' => $link->target, 'rel' => $link->rel]);
 			$fig->addHtml($imgParent);
