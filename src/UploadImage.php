@@ -135,7 +135,7 @@ class UploadImage extends BaseImage
 		$maxHeight = $widest->getHeight();
 
 		if ($this->isSvg()) {
-			return $this->getImgTag($maxWidth, $maxHeight ?? $maxWidth, $attrs);
+			return $this->getImgTag(new ImageSize($maxWidth, $maxHeight ?? $maxWidth), $attrs);
 		}
 
 		$sets = $this->createSrcsetSizes($sizes);
