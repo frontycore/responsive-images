@@ -293,6 +293,7 @@ class UploadImage extends BaseImage
 		$figure = $dom->find('figure', 0);
 		$link = $dom->find('a', 0);
 		$img = $dom->find('img', 0);
+		$caption = $dom->find('figcaption', 0);
 		if (Strings::lower(pathinfo($img->src, PATHINFO_EXTENSION)) === 'svg') return $blockContent;
 
 		$class = $figure->class;
@@ -313,6 +314,10 @@ class UploadImage extends BaseImage
 			'title' => $img->title
 		]);
 		$imgParent->addHtml($imgTag);
+
+		if ($caption && $caption->innerHtml) {
+			$fig->addHtml($caption);
+		}
 
 		return (string)$fig;
 	}
