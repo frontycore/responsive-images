@@ -62,6 +62,17 @@ class UploadImage extends BaseImage
 	}
 
 	/**
+	 * Get width and height of full image.
+	 * @return array|null [0 => int width, 1 => int height], null if not available.
+	 */
+	public function getOriginalSize(): ?array
+	{
+		$data = wp_get_attachment_image_src($this->ID, 'full');
+		if ($data === false) return null;
+		return [$data[1], $data[2]];
+	}
+
+	/**
 	 * Get image URL, width and height for given ImageSize.
 	 * 	Crop is not performed if neither Auto Cloudinary and Fly Images plugins are available.
 	 *  For Cloudinary crop values, see https://cloudinary.com/documentation/resizing_and_cropping
@@ -281,10 +292,12 @@ class UploadImage extends BaseImage
 	 * Replace core/image Gutenberg block with responsiveImageTag.
 	 * @param string $blockContent HTML content of block.
 	 * @param ImageSizeList $sizes
+	 * @param bool $withRatio Whether to add aspect-ratio box.
+	 * @param bool $withMaxWidth Whether to add max-width to aspect-ratio box.
 	 * @return string
 	 * @see https://naswp.cz/mistrovska-optimalizace-obrazku-nejen-pro-wordpress/#nove-workflow-dodatek-obrazky-v-gutenbergu
 	 */
-	public function replaceImageBlock(string $blockContent, ImageSizeList $sizes): string
+	public function replaceImageBlock(string $blockContent, ImageSizeList $sizes, bool $withRatio = false, bool $withMaxWidth = true): string
 	{
 		$dom = new DOM();
 		$dom->loadStr($blockContent);
@@ -305,6 +318,15 @@ class UploadImage extends BaseImage
 			$fig->addHtml($imgParent);
 		} else {
 			$imgParent = $fig;
+		}
+
+		if ($withRatio && $size = $this->getOriginalSize()) {
+			$ratio = round(100 * $size[1] / $size[0], 2);
+			$style = "--bs-aspect-ratio:$ratio%";
+			if ($withMaxWidth) $style .= ";max-width:$size[0]px";
+			$imgParent
+				->addClass('ratio')
+				->addStyle($style);
 		}
 
 		$imgTag = $this->getResponsiveImgTag($sizes, [
