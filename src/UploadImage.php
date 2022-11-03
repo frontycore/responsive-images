@@ -186,6 +186,24 @@ class UploadImage extends BaseImage
 	}
 
 	/**
+	 * Output preload link of the image with given responsive sizes.
+	 * 	Put this to <head> section for soon-to-render images to optimize CLS.
+	 * @param ImageSizeList $sizes
+	 */
+	public function responsivePreloadLink(ImageSizeList $sizes, array $attrs = [])
+	{
+		$img = $this->getResponsiveImgTag($sizes);
+		$link = Html::el('link', [
+			'rel' => 'preload',
+			'as' => 'image',
+			'href' => $img->getSrc(),
+			'imagesrcset' => $img->getSrcset(),
+			'imagesizes' => $img->getSizes()
+		]);
+		echo $link . PHP_EOL;
+	}
+
+	/**
 	 * Get image tag wrapped in Bootstrap 5 figure.ratio, which ensures it's aspect ratio.
 	 * 	Useful with lazyloaded images to prevent Core Web Vitals CLS.
 	 * 	To use with responsive img tag, set $sizes argument.
