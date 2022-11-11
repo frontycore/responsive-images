@@ -341,7 +341,7 @@ class UploadImage extends BaseImage
 		if ($withRatio && $size = $this->getOriginalSize()) {
 			$ratio = round(100 * $size[1] / $size[0], 2);
 			$style = "--bs-aspect-ratio:$ratio%";
-			if ($withMaxWidth) $style .= ";max-width:$size[0]px";
+			if ($withMaxWidth) $style .= ";--img-max-width:$size[0]px";
 			$imgParent
 				->addClass('ratio')
 				->addStyle($style);
