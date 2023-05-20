@@ -15,6 +15,12 @@ class ImageSizeList implements Iterator
 	/** @var bool */
 	private $mobileFirst = true;
 
+	/** @var int|null */
+	private $maxWidth;
+
+	/** @var int|null */
+	private $maxHeight;
+
 	/** @var array|ImageSize[] */
 	private $sizes = [];
 
@@ -26,10 +32,14 @@ class ImageSizeList implements Iterator
 
 	/**
 	 * @param bool $mobileFirst Whether given breakpoints shoud be considered as minimal (true) or maximal (false) viewport widths.
+	 * @param int|null $maxWidth Maximal image with, which should not be exceeded in any breakpoint.
+	 * @param int|null $maxHeight Maximal image height, which should not be exceeded in any breakpoint.
 	 */
-	public function __construct(bool $mobileFirst = true)
+	public function __construct(bool $mobileFirst = true, ?int $maxWidth = null, ?int $maxHeight = null)
 	{
 		$this->mobileFirst = $mobileFirst;
+		$this->maxWidth = $maxWidth;
+		$this->maxHeight = $maxHeight;
 	}
 
 	/**
@@ -63,6 +73,7 @@ class ImageSizeList implements Iterator
 	 */
 	public function append(int $breakpoint, ImageSize $imageSize)
 	{
+		$imageSize->setMaxWidth($this->maxWidth)->setMaxHeight($this->maxHeight);
 		$this->sizes[$breakpoint] = $imageSize;
 		return $this;
 	}

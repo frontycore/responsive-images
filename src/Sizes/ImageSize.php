@@ -13,9 +13,13 @@ class ImageSize
 	/** @var int|null */
 	private $height;
 
-	/**
-	 * @var string|bool
-	 */
+	/** @var int|null */
+	private $maxWidth;
+
+	/** @var int|null */
+	private $maxHeight;
+
+	/** @var string|bool */
 	private $crop;
 
 	/** @var array  */
@@ -55,11 +59,34 @@ class ImageSize
 	}
 
 	/**
+	 * Set maximal width, which won't be exceeded in width getter.
+	 * @param int|null $maxWidth Null = no max width.
+	 * @return static
+	 */
+	public function setMaxWidth(?int $maxWidth): static
+	{
+		$this->maxWidth = $maxWidth;
+		return $this;
+	}
+
+	/**
+	 * Set maximal height, which won't be exceeded in height getter.
+	 * @param int|null $maxHeight Null = no max height.
+	 * @return static
+	 */
+	public function setMaxHeight(?int $maxHeight): static
+	{
+		$this->maxHeight = $maxHeight;
+		return $this;
+	}
+
+	/**
 	 * @return int
 	 */
 	public function getWidth(): int
 	{
-		return $this->width;
+		if (!$this->maxWidth) return $this->width;
+		return min($this->width, $this->maxWidth);
 	}
 
 	/**
@@ -67,7 +94,8 @@ class ImageSize
 	 */
 	public function getHeight(): ?int
 	{
-		return $this->height;
+		if (!$this->maxHeight) return $this->height;
+		return min($this->height, $this->maxHeight);
 	}
 
 	/**

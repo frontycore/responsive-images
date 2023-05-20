@@ -110,11 +110,13 @@ class BootstrapSizes
 
 	/**
 	 * Get ImageSizeList for previously configured columns and containers.
+	 * @param int|null $maxWidth Maximal width, which won't be exceeded.
+	 * @param int|null $maxHeight Maximal height, which won't be exceeded.
 	 * @return ImageSizeList
 	 */
-	public function getSizes(): ImageSizeList
+	public function getSizes(?int $maxWidth = null, ?int $maxHeight = null): ImageSizeList
 	{
-		$sizes = new ImageSizeList(true);
+		$sizes = new ImageSizeList(true, $maxWidth, $maxHeight);
 		$last = $this->getColData($this->columns);
 		foreach ($this->breakpoints as $breakpointName => $breakpointWidth) {
 			$col = (isset($this->cols[$breakpointName])) ? $this->cols[$breakpointName] : $last;
