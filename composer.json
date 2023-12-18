@@ -6,8 +6,8 @@
 	"license": "MIT",
 	"require": {
 		"php": ">=7.3",
-		"nette/utils": "~3.2.2",
-		"enshrined/svg-sanitize": "^0.14.0",
+		"nette/utils": "^4.0.0",
+		"enshrined/svg-sanitize": "^0.16.0",
 		"paquettg/php-html-parser": "^3.1"
 	},
 	"autoload": {
