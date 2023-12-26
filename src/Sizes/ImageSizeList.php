@@ -54,7 +54,7 @@ class ImageSizeList implements Iterator
 	 * @param bool $mobileFirst
 	 * @return static
 	 */
-	public static function fromArray(array $imageSizes, bool $mobileFirst = true)
+	public static function fromArray(array $imageSizes, bool $mobileFirst = true): static
 	{
 		$self = new static($mobileFirst);
 		foreach ($imageSizes as $breakpoint => $imageSize) {
@@ -71,7 +71,7 @@ class ImageSizeList implements Iterator
 	 * @param ImageSize $imageSize
 	 * @return static
 	 */
-	public function append(int $breakpoint, ImageSize $imageSize)
+	public function append(int $breakpoint, ImageSize $imageSize): static
 	{
 		$imageSize->setMaxWidth($this->maxWidth)->setMaxHeight($this->maxHeight);
 		$this->sizes[$breakpoint] = $imageSize;
@@ -137,7 +137,7 @@ class ImageSizeList implements Iterator
 	/**
 	 * Move to next breakpoint.
 	 */
-	public function next()
+	public function next(): void
 	{
 		$this->counter ++;
 	}
@@ -145,7 +145,7 @@ class ImageSizeList implements Iterator
 	/**
 	 * Order breakpoints from largest if $mobileFirst or smallest if not $mobileFirst, reset iterator.
 	 */
-	public function rewind()
+	public function rewind(): void
 	{
 		$this->breakpoints = array_keys($this->sizes);
 		usort($this->breakpoints, function(int $a, int $b) {
