@@ -2,13 +2,14 @@
 
 namespace Fronty\ResponsiveImages;
 
+use DOMDocument;
+use DOMElement;
 use Fronty\ResponsiveImages\Sizes\ImageSize;
 use Fronty\ResponsiveImages\Sizes\ImageSizeList;
 use Nette\Utils\Html;
 use Nette\Utils\Strings;
 use Nette\Utils\ArrayHash;
 use enshrined\svgSanitize\Sanitizer;
-use PHPHtmlParser\Dom;
 
 /**
  * Object to manipulate with uploaded images.
@@ -317,22 +318,33 @@ class UploadImage extends BaseImage
 	 */
 	public function replaceImageBlock(string $blockContent, ImageSizeList $sizes, bool $withRatio = false, bool $withMaxWidth = true): string
 	{
-		$dom = new DOM();
-		$dom->loadStr($blockContent);
+		$dom = new DOMDocument();
+		$dom->loadHTML($blockContent, LIBXML_NOERROR);
 
-		$div = $dom->find('div', 0);
-		$figure = $dom->find('figure', 0);
-		$link = $dom->find('a', 0);
-		$img = $dom->find('img', 0);
-		$caption = $dom->find('figcaption', 0);
-		if (Strings::lower(pathinfo($img->src, PATHINFO_EXTENSION)) === 'svg') return $blockContent;
+		$img = $dom->getElementsByTagName('img')->item(0);
+		assert($img instanceof DOMElement);
+		if (Strings::lower(pathinfo(strval($img?->getAttribute('src')), PATHINFO_EXTENSION)) === 'svg') return $blockContent;
 
-		$class = $figure->class;
-		if ($div) $class .= ' ' . $div->class;
+		$div = $dom->getElementsByTagName('div')->item(0);
+		$figure = $dom->getElementsByTagName('figure')->item(0);
+		$link = $dom->getElementsByTagName('a')->item(0);
+		$caption = $dom->getElementsByTagName('figcaption')->item(0);
 
-		$fig = Html::el('figure', ['class' => $class, 'id' => $figure->id]);
-		if ($link) {
-			$imgParent = Html::el('a', ['class' => $link->class, 'href' => $link->href, 'target' => $link->target, 'rel' => $link->rel]);
+		assert($figure instanceof DOMElement);
+		$class = strval($figure?->getAttribute('class'));
+		if ($div instanceof DOMElement) $class .= ' ' . $div->getAttribute('class');
+
+		$fig = Html::el('figure', [
+			'class' => $class,
+			'id' => $figure->getAttribute('id')
+		]);
+		if ($link instanceof DOMElement) {
+			$imgParent = Html::el('a', [
+				'class' => $link->getAttribute('class'),
+				'href' => $link->getAttribute('href'),
+				'target' => $link->getAttribute('target'),
+				'rel' => $link->getAttribute('rel')
+			]);
 			$fig->addHtml($imgParent);
 		} else {
 			$imgParent = $fig;
@@ -348,15 +360,16 @@ class UploadImage extends BaseImage
 		}
 
 		$imgTag = $this->getResponsiveImgTag($sizes, [
-			'class' => $img->class,
-			'id' => $img->id,
-			'alt' => $img->alt,
-			'title' => $img->title
+			'class' => $img->getAttribute('class'),
+			'id' => $img->getAttribute('id'),
+			'alt' => $img->getAttribute('alt'),
+			'title' => $img->getAttribute('title')
 		]);
 		$imgParent->addHtml($imgTag);
 
-		if ($caption && $caption->innerHtml) {
-			$fig->addHtml($caption);
+		if ($caption) {
+			$captionText = implode(array_map([$caption->ownerDocument, 'saveHTML'], iterator_to_array($caption->childNodes)));
+			$fig->addHtml(Html::el('figcaption')->setHtml($captionText));
 		}
 
 		return (string)$fig;
