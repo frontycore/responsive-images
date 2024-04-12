@@ -40,7 +40,7 @@ class UploadImage extends BaseImage
 	 */
 	public function getUrl(): string
 	{
-		return wp_get_attachment_url($this->ID);
+		return strval(wp_get_attachment_url($this->ID));
 		// $src = wp_get_attachment_image_src($this->ID, 'full');
 		// return ($src) ? $src[0] : '';
 	}
