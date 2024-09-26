@@ -319,7 +319,7 @@ class UploadImage extends BaseImage
 	public function replaceImageBlock(string $blockContent, ImageSizeList $sizes, bool $withRatio = false, bool $withMaxWidth = true): string
 	{
 		$dom = new DOMDocument();
-		$dom->loadHTML($blockContent, LIBXML_NOERROR);
+		$dom->loadHTML('<?xml encoding="utf-8" ?>' . $blockContent, LIBXML_NOERROR);
 
 		$img = $dom->getElementsByTagName('img')->item(0);
 		assert($img instanceof DOMElement);
