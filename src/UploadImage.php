@@ -334,6 +334,8 @@ class UploadImage extends BaseImage
 		$class = strval($figure?->getAttribute('class'));
 		if ($div instanceof DOMElement) $class .= ' ' . $div->getAttribute('class');
 
+		$imgStyle = strval($img->getAttribute('style'));
+
 		$fig = Html::el('figure', [
 			'class' => $class,
 			'id' => $figure->getAttribute('id')
@@ -365,6 +367,7 @@ class UploadImage extends BaseImage
 			'alt' => $img->getAttribute('alt'),
 			'title' => $img->getAttribute('title')
 		]);
+		if ($imgStyle) $imgTag->style($imgStyle);
 		$imgParent->addHtml($imgTag);
 
 		if ($caption) {
