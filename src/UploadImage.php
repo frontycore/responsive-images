@@ -125,8 +125,8 @@ class UploadImage extends BaseImage
 		$src = $this->getSizedSrc($size);
 		if ($src) {
 			$attrs['src'] = esc_url($src[0]);
-			$attrs['width'] = $src[1];
-			$attrs['height'] = $src[2];
+			if (!isset($attrs['width'])) $attrs['width'] = $src[1];
+			if (!isset($attrs['height'])) $attrs['height'] = $src[2];
 		}
 		if (!isset($attrs['alt'])) $attrs['alt'] = $this->getDefaultAlt();
 		$attrs['alt'] = esc_attr(strip_tags($attrs['alt']));
@@ -163,8 +163,8 @@ class UploadImage extends BaseImage
 		}
 
 		if (!isset($attrs['width']) && $widestSrc) {
-			$attrs['width'] = $widestSrc[1];
-			$attrs['height'] = $widestSrc[2];
+			if (!isset($attrs['width'])) $attrs['width'] = $widestSrc[1];
+			if (!isset($attrs['height'])) $attrs['height'] = $widestSrc[2];
 		}
 		if (!isset($attrs['alt'])) $attrs['alt'] = $this->getDefaultAlt();
 		$attrs['alt'] = esc_attr(strip_tags($attrs['alt']));

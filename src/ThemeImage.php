@@ -47,8 +47,8 @@ class ThemeImage extends BaseImage
 	public function getImgTag(ImageSize $size, array $attrs = []): Html
 	{
 		$attrs['src'] = esc_url($this->getUrl());
-		$attrs['width'] = $size->getWidth();
-		$attrs['height'] = $size->getHeight();
+		if (!isset($attrs['width'])) $attrs['width'] = $size->getWidth();
+		if (!isset($attrs['height'])) $attrs['height'] = $size->getHeight();
 		if (!isset($attrs['alt'])) $attrs['alt'] = $this->getDefaultAlt();
 		$attrs['alt'] = esc_attr(strip_tags($attrs['alt']));
 		$el = Html::el('img', $attrs);
