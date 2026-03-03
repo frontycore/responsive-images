@@ -49,7 +49,7 @@ class ImageSize
 	 * 	- null - if $height is null, use 'fit', otherwise use 'fill'
 	 * @param array $cloudinaryTransform Cloudinary image transform, used in only with Auto Cloudinary. @see https://cloudinary.com/documentation/image_transformations
 	 */
-	public function __construct(int $width, int $height = null, $crop = null, array $cloudinaryTransform = [])
+	public function __construct(int $width, ?int $height = null, $crop = null, array $cloudinaryTransform = [])
 	{
 		if ($crop === null) $crop = ($height === null) ? 'fit' : 'fill';
 		$this->width = $width;

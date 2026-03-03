@@ -111,7 +111,7 @@ class UploadImage extends BaseImage
 	 *
 	 * @see static::getSizedSrc()
 	 */
-	public function getImgLink(array $attrs = [], ImageSize $size = null): Html
+	public function getImgLink(array $attrs = [], ?ImageSize $size = null): Html
 	{
 		$attrs['href'] = ($size === null) ? $this->getUrl() : $this->getSizedSrc($size)[0];
 		return Html::el('a', $attrs);
@@ -218,7 +218,7 @@ class UploadImage extends BaseImage
 	 * @see https://getbootstrap.com/docs/5.0/helpers/ratio/#custom-ratios
 	 * @see https://web.dev/cls/
 	 */
-	public function getAspectImgTag(int $width, int $height, ImageSizeList $sizes = null, array $wrapAttrs = [], array $imgAttrs = []): Html
+	public function getAspectImgTag(int $width, int $height, ?ImageSizeList $sizes = null, array $wrapAttrs = [], array $imgAttrs = []): Html
 	{
 		if ($sizes === null) $img = $this->getImgTag(new ImageSize($width, $height), $imgAttrs);
 		else $img = $this->getResponsiveImgTag($sizes, $imgAttrs);
@@ -242,7 +242,7 @@ class UploadImage extends BaseImage
 	 *
 	 * @see static::getAspectImgTag()
 	 */
-	public function aspectImgTag(int $width, int $height, ImageSizeList $sizes = null, array $wrapAttrs = [], array $imgAttrs = [])
+	public function aspectImgTag(int $width, int $height, ?ImageSizeList $sizes = null, array $wrapAttrs = [], array $imgAttrs = [])
 	{
 		echo $this->getAspectImgTag($width, $height, $sizes, $wrapAttrs, $imgAttrs);
 	}
