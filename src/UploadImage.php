@@ -74,6 +74,18 @@ class UploadImage extends BaseImage
 	}
 
 	/**
+	 * Get aspect ratio of original image.
+	 * @param int $precision Number of decimal places to round to.
+	 * @return float|null
+	 */
+	public function getOriginalRatio(int $precision = 2): ?float
+	{
+		$size = $this->getOriginalSize();
+		if ($size === null) return null;
+		return round(100 * $size[1] / $size[0], $precision);
+	}
+
+	/**
 	 * Get image URL, width and height for given ImageSize.
 	 * 	Crop is not performed if neither Auto Cloudinary and Fly Images plugins are available.
 	 *  For Cloudinary crop values, see https://cloudinary.com/documentation/resizing_and_cropping
