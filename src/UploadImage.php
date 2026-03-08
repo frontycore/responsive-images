@@ -36,13 +36,35 @@ class UploadImage extends BaseImage
 	}
 
 	/**
+	 * Get attachment ID.
+	 * @return int
+	 */
+	public function getImageId(): int
+	{
+		return $this->ID;
+	}
+
+	/**
+	 * Get focal point set by Better Image sizes plugin.
+	 * @param int $precision
+	 * @return array [left%, top%]
+	 */
+	public function getFocalpoint(int $precision = 2): array
+	{
+		$focal = get_post_meta($this->ID, 'focal_point', true);
+		if (function_exists('sanitize_focal_point')) {
+			$focal = sanitize_focal_point($focal);
+		}
+		if (empty($focal)) $focal = [0.5, 0.5];
+		return array_map(fn(float $val): float => round($val * 100, $precision), $focal);
+	}
+
+	/**
 	 * @inheritDoc
 	 */
 	public function getUrl(): string
 	{
 		return strval(wp_get_attachment_url($this->ID));
-		// $src = wp_get_attachment_image_src($this->ID, 'full');
-		// return ($src) ? $src[0] : '';
 	}
 
 	/**
