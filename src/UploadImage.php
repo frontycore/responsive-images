@@ -165,7 +165,7 @@ class UploadImage extends BaseImage
 		if (!isset($attrs['alt'])) $attrs['alt'] = $this->getDefaultAlt();
 		$attrs['alt'] = esc_attr(strip_tags($attrs['alt']));
 		$el = Html::el('img', $attrs);
-		apply_filters('fri_upload_img_tag', $el, $size);
+		apply_filters('fri_upload_img_tag', $el, $size, $this);
 		return $el;
 	}
 
@@ -204,7 +204,7 @@ class UploadImage extends BaseImage
 		$attrs['alt'] = esc_attr(strip_tags($attrs['alt']));
 		$el = Html::el('img', $attrs);
 
-		apply_filters('fri_upload_responsive_img_tag', $el, $sizes);
+		apply_filters('fri_upload_responsive_img_tag', $el, $sizes, $this);
 		return $el;
 	}
 
@@ -262,7 +262,7 @@ class UploadImage extends BaseImage
 			->addClass('ratio')
 			->setStyle('--bs-aspect-ratio:' . $ratio . '%')
 			->addHtml($img);
-		apply_filters('fri_upload_aspect_img_tag', $el, $width, $height, $ratio, $sizes);
+		apply_filters('fri_upload_aspect_img_tag', $el, $width, $height, $ratio, $sizes, $this);
 		return $el;
 	}
 

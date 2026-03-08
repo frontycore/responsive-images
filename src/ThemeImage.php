@@ -29,7 +29,7 @@ class ThemeImage extends BaseImage
 	public function getUrl(): string
 	{
 		$file = get_template_directory_uri() . '/' . $this->file;
-		return apply_filters('fri_theme_img_url', $file, $this->file);
+		return apply_filters('fri_theme_img_url', $file, $this->file, $this);
 	}
 
 	/**
@@ -38,7 +38,7 @@ class ThemeImage extends BaseImage
 	public function getPath(): string
 	{
 		$file = get_template_directory() . '/' . $this->file;
-		return apply_filters('fri_theme_img_path', $file, $this->file);
+		return apply_filters('fri_theme_img_path', $file, $this->file, $this);
 	}
 
 	/**
@@ -52,7 +52,7 @@ class ThemeImage extends BaseImage
 		if (!isset($attrs['alt'])) $attrs['alt'] = $this->getDefaultAlt();
 		$attrs['alt'] = esc_attr(strip_tags($attrs['alt']));
 		$el = Html::el('img', $attrs);
-		apply_filters('fri_theme_img_tag', $el, $size);
+		apply_filters('fri_theme_img_tag', $el, $size, $this);
 		return $el;
 	}
 
@@ -75,7 +75,7 @@ class ThemeImage extends BaseImage
 			->addClass('ratio')
 			->setStyle('--bs-aspect-ratio:' . $ratio . '%')
 			->addHtml($img);
-		apply_filters('fri_theme_aspect_img_tag', $el, $width, $height, $ratio);
+		apply_filters('fri_theme_aspect_img_tag', $el, $width, $height, $ratio, $this);
 		return $el;
 	}
 
