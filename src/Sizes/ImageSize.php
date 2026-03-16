@@ -118,7 +118,7 @@ class ImageSize
 
 	/**
 	 * Return whether to crop or particular [x, y] crop position.
-	 * 	Ideal as 3rd argument for fly_get_attachment_image_src().
+	 * 	Ideal as 3rd argument for bis_get_attachment_image_src().
 	 * @return bool|array
 	 */
 	public function getCropOrPosition()

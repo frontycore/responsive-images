@@ -55,6 +55,36 @@ abstract class BaseImage
 	}
 
 	/**
+	 * Get width and height of the image.
+	 * @return array|null [0 => int width, 1 => int height], null if not available.
+	 */
+	public function getOriginalSize(): ?array
+	{
+		if ($this->isSvg()) {
+			$xml = simplexml_load_file($this->getPath());
+			$dim = array_filter([
+				intval($xml->attributes()->width),
+				intval($xml->attributes()->height),
+			], fn(int $val): bool => $val > 0);
+			return (count($dim) === 2) ? $dim : null;
+		}
+		$dim = getimagesize($this->getPath());
+		return (is_array($dim) && count($dim) === 2) ? $dim : null;
+	}
+
+	/**
+	 * Get aspect ratio of original image.
+	 * @param int $precision Number of decimal places to round to.
+	 * @return float|null
+	 */
+	public function getOriginalRatio(int $precision = 2): ?float
+	{
+		$size = $this->getOriginalSize();
+		if ($size === null) return null;
+		return round(100 * $size[1] / $size[0], $precision);
+	}
+
+	/**
 	 * Output <img> tag as Html.
 	 * @param ImageSize $size
 	 * @param array $attrs

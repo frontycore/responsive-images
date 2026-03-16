@@ -85,26 +85,14 @@ class UploadImage extends BaseImage
 	}
 
 	/**
-	 * Get width and height of full image.
+	 * Get width and height of full image from DB.
 	 * @return array|null [0 => int width, 1 => int height], null if not available.
 	 */
 	public function getOriginalSize(): ?array
 	{
 		$data = wp_get_attachment_image_src($this->ID, 'full');
-		if ($data === false) return null;
-		return [$data[1], $data[2]];
-	}
-
-	/**
-	 * Get aspect ratio of original image.
-	 * @param int $precision Number of decimal places to round to.
-	 * @return float|null
-	 */
-	public function getOriginalRatio(int $precision = 2): ?float
-	{
-		$size = $this->getOriginalSize();
-		if ($size === null) return null;
-		return round(100 * $size[1] / $size[0], $precision);
+		if ($data === false) return parent::getOriginalSize();
+		return [intval($data[1]), intval($data[2])];
 	}
 
 	/**
@@ -130,8 +118,8 @@ class UploadImage extends BaseImage
 		if (function_exists('cloudinary_url')) {
 			return [cloudinary_url($this->ID, ['transform' => $size->getCloudinaryTransform()]), $width, $height];
 		}
-		if (function_exists('fly_get_attachment_image_src')) {
-			return array_values(fly_get_attachment_image_src($this->ID, [$width, $height], $size->getCropOrPosition()));
+		if (function_exists('bis_get_attachment_image_src')) {
+			return array_values(bis_get_attachment_image_src($this->ID, [$width, $height], $size->getCropOrPosition()));
 		}
 		return wp_get_attachment_image_src($this->ID, [$width, $height]);
 	}
