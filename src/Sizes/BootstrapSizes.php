@@ -112,10 +112,10 @@ class BootstrapSizes
 	 * Get ImageSizeList for previously configured columns and containers.
 	 * @param int|null $maxWidth Maximal width, which won't be exceeded.
 	 * @param int|null $maxHeight Maximal height, which won't be exceeded.
-	 * @param int $hdRatio Coeficient, which is used to multiply the dimensions with for Retina displays.
+	 * @param float $hdRatio Coeficient, which is used to multiply the dimensions with for Retina displays.
 	 * @return ImageSizeList
 	 */
-	public function getSizes(?int $maxWidth = null, ?int $maxHeight = null, int $hdRatio = 1): ImageSizeList
+	public function getSizes(?int $maxWidth = null, ?int $maxHeight = null, float $hdRatio = 1): ImageSizeList
 	{
 		$sizes = new ImageSizeList(true, $maxWidth, $maxHeight);
 		$last = $this->getColData($this->columns);
@@ -125,10 +125,10 @@ class BootstrapSizes
 
 			$imgWidth = $this->getImageWidth($breakpointName, $col->cols);
 			if ($imgWidth !== null) {
-				$imgHeight = ($col->height !== null) ? $col->height * $hdRatio : null;
+				$imgHeight = ($col->height !== null) ? round($col->height * $hdRatio) : null;
 				$sizes->append(
 					$breakpointWidth,
-					new ImageSize($imgWidth * $hdRatio, $imgHeight, $col->crop, $col->cloudinaryTransform)
+					new ImageSize(round($imgWidth * $hdRatio), $imgHeight, $col->crop, $col->cloudinaryTransform)
 				);
 			}
 		}
