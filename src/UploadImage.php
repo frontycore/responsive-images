@@ -176,11 +176,14 @@ class UploadImage extends BaseImage
 		$sets = $this->createSrcsetSizes($sizes);
 		$widestSrc = $this->getSizedSrc($widest);
 
+		$setsSizes = apply_filters('fri_upload_responsive_img_sizes', $sets->sizes, $this);
+		$setsSrcsets = apply_filters('fri_upload_responsive_img_srcset', $sets->srcsets, $this);
+
 		if (isset($widestSrc[0])) {
 			$attrs = array_merge($attrs, [
 				'src' => $widestSrc[0],
-				'sizes' => implode(', ', $sets->sizes),
-				'srcset' => implode(', ', $sets->srcsets)
+				'sizes' => implode(', ', $setsSizes),
+				'srcset' => implode(', ', $setsSrcsets)
 			]);
 		}
 
