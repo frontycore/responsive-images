@@ -119,7 +119,7 @@ class UploadImage extends BaseImage
 			return [cloudinary_url($this->ID, ['transform' => $size->getCloudinaryTransform()]), $width, $height];
 		}
 		if (function_exists('bis_get_attachment_image_src')) {
-			return array_values(bis_get_attachment_image_src($this->ID, [$width, $height], $size->getCropOrPosition()));
+			return array_values(bis_get_attachment_image_src($this->ID, [$width, $height], $size->getCropOrPosition(), ['retina' => true]));
 		}
 		return wp_get_attachment_image_src($this->ID, [$width, $height]);
 	}
