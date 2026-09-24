@@ -82,7 +82,9 @@ Return or ouput inline \<svg\>. All classes in SVG are changed to unique using r
 
 ## UploadImage object
 
-> All methods generating \<img\> tag takes care of **`alt`** attribute. If you don't specify it explicitly in $attrs argument, it will be set automatically from "Alternative text" or "Title" field in WP Media Library.
+> All methods generating \<img\> tag takes care of **`alt`** attribute. If you don't specify it explicitly in $attrs argument, it will be set automatically from "Alternative text" or "Title" field in WP Media Library. To avoid the title (usually just a file name), pass your own alt using [`getAlt()`](#getalt).
+>
+> Attributes are escaped by the [Html object](https://doc.nette.org/en/3.0/html-elements), so pass them unescaped. HTML tags are stripped from `alt` and entities (eg. `&nbsp;`) are decoded.
 
 ### `__construct()`
 
@@ -101,6 +103,24 @@ $img = img_upload($attachment_id);
 ### `isSvg()`, `getPathinfo()`, `getUrl()`, `getPath()`, `getInlineSvg()`, `inlineSvg()`, `getImgTag()` and `imgTag()`
 
 These methods is documented in [Shared methods above](#shared-methods).
+
+### `getAlt()`
+
+Returns "Alternative text" set in WP Media Library. Unlike the automatic `alt` of \<img\> tags, "Title" field is never used.
+
+- `@param string $fallback = ''` Returned when the alternative text is empty, eg. a heading next to the image. Keep the default empty string for decorative images.
+- `@return string`
+
+Example:
+```php
+$img = img_upload($attachment_id);
+
+// Content image: heading as a fallback
+$img->imgTag(img_size(400, 250), ['alt' => $img->getAlt($heading)]);
+
+// Decorative image: empty alt unless set in Media Library
+$img->imgTag(img_size(1920), ['alt' => $img->getAlt()]);
+```
 
 ### `getSizedSrc()`
 

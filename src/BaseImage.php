@@ -136,4 +136,15 @@ abstract class BaseImage
 		$svg = str_replace($classes, $replace, $svg);
 		return $svg;
 	}
+
+	/**
+	 * Make plain text of image alt.
+	 * 	Entities (eg. &nbsp; added by the_title filter) are decoded, because Html escapes attributes itself.
+	 * @param string $alt
+	 * @return string
+	 */
+	protected function sanitizeAlt(string $alt): string
+	{
+		return html_entity_decode(strip_tags($alt), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+	}
 }

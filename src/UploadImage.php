@@ -146,12 +146,12 @@ class UploadImage extends BaseImage
 	{
 		$src = $this->getSizedSrc($size);
 		if ($src) {
-			$attrs['src'] = esc_url($src[0]);
+			$attrs['src'] = esc_url_raw($src[0]);
 			if (!isset($attrs['width'])) $attrs['width'] = $src[1];
 			if (!isset($attrs['height'])) $attrs['height'] = $src[2];
 		}
 		if (!isset($attrs['alt'])) $attrs['alt'] = $this->getDefaultAlt();
-		$attrs['alt'] = esc_attr(strip_tags($attrs['alt']));
+		$attrs['alt'] = $this->sanitizeAlt(strval($attrs['alt']));
 		$el = Html::el('img', $attrs);
 		apply_filters('fri_upload_img_tag', $el, $size, $this);
 		return $el;
@@ -192,7 +192,7 @@ class UploadImage extends BaseImage
 			if (!isset($attrs['height'])) $attrs['height'] = $widestSrc[2];
 		}
 		if (!isset($attrs['alt'])) $attrs['alt'] = $this->getDefaultAlt();
-		$attrs['alt'] = esc_attr(strip_tags($attrs['alt']));
+		$attrs['alt'] = $this->sanitizeAlt(strval($attrs['alt']));
 		$el = Html::el('img', $attrs);
 
 		apply_filters('fri_upload_responsive_img_tag', $el, $sizes, $this);
@@ -299,7 +299,7 @@ class UploadImage extends BaseImage
 				$media = ($imageSizes->isMobileFirst()) ? 'min-width' : 'max-width';
 				$sizes[] = sprintf('(%s: %dpx) %dpx', $media, $viewport, $src[1]);
 			}
-			$srcsets[] = esc_url($src[0]) . ' ' . $src[1] . 'w';
+			$srcsets[] = esc_url_raw($src[0]) . ' ' . $src[1] . 'w';
 		}
 
 		return ArrayHash::from([
@@ -309,14 +309,24 @@ class UploadImage extends BaseImage
 	}
 
 	/**
+	 * Get "Alternative text" set in WP Media Library.
+	 * 	Unlike the automatic alt of <img> tags, attachment title is not used, as it is usually just a file name.
+	 * @param string $fallback Returned when the alternative text is empty, eg. a heading next to the image.
+	 * @return string
+	 */
+	public function getAlt(string $fallback = ''): string
+	{
+		$alt = trim(strval(get_post_meta($this->ID, '_wp_attachment_image_alt', true)));
+		return ($alt !== '') ? $alt : $fallback;
+	}
+
+	/**
 	 * Get default image alt.
 	 * @return string
 	 */
 	private function getDefaultAlt(): string
 	{
-		if ($alt = get_post_meta($this->ID, '_wp_attachment_image_alt', true)) return $alt;
-		if ($alt = get_the_title($this->ID)) return $alt;
-		return '';
+		return $this->getAlt(strval(get_the_title($this->ID)));
 	}
 
 	/**

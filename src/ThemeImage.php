@@ -46,11 +46,11 @@ class ThemeImage extends BaseImage
 	 */
 	public function getImgTag(ImageSize $size, array $attrs = []): Html
 	{
-		$attrs['src'] = esc_url($this->getUrl());
+		$attrs['src'] = esc_url_raw($this->getUrl());
 		if (!isset($attrs['width'])) $attrs['width'] = $size->getWidth();
 		if (!isset($attrs['height'])) $attrs['height'] = $size->getHeight();
 		if (!isset($attrs['alt'])) $attrs['alt'] = $this->getDefaultAlt();
-		$attrs['alt'] = esc_attr(strip_tags($attrs['alt']));
+		$attrs['alt'] = $this->sanitizeAlt(strval($attrs['alt']));
 		$el = Html::el('img', $attrs);
 		apply_filters('fri_theme_img_tag', $el, $size, $this);
 		return $el;
