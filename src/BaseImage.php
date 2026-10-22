@@ -97,8 +97,10 @@ abstract class BaseImage
 
 	/**
 	 * Returns SVG code.
-	 * @return string
+	 * @return string SVG code, empty string when the file can't be read.
 	 * @throws LogicException If the image is not of SVG type. Check image using static::isSvg().
+	 *
+	 * @see static::reportIssue()
 	 */
 	public function getInlineSvg(): string
 	{
@@ -106,6 +108,10 @@ abstract class BaseImage
 			throw new LogicException("Image '{$this->getUrl()}' is not SVG.");
 		}
 		$svg = file_get_contents($this->getPath());
+		if ($svg === false) {
+			$this->reportIssue("SVG file '{$this->getPath()}' couldn't be read.");
+			return '';
+		}
 		return $this->svgUniqueClasses($svg);
 	}
 
@@ -137,6 +143,24 @@ abstract class BaseImage
 		}, $classes);
 		$svg = str_replace($classes, $replace, $svg);
 		return $svg;
+	}
+
+	/**
+	 * Report a problem, which would otherwise leave the output silently empty.
+	 *  Triggers a warning when WP_DEBUG is on, so the problem is loud in development,
+	 *  and logs it otherwise. Hook the `fri_image_issue` action to report it elsewhere,
+	 *  eg. to a monitoring service.
+	 * @param string $message
+	 */
+	protected function reportIssue(string $message): void
+	{
+		$message = static::class . ": $message";
+		do_action('fri_image_issue', $message, $this);
+		if (defined('WP_DEBUG') && WP_DEBUG) {
+			trigger_error($message, E_USER_WARNING);
+		} else {
+			error_log($message);
+		}
 	}
 
 	/**

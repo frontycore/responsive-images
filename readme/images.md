@@ -73,9 +73,11 @@ Output:
 
 ### `getInlineSvg()` and `inlineSvg()`
 
-Return or ouput inline \<svg\>. All classes in SVG are changed to unique using random hash. In UploadTheme, the SVG is also sanitized using [darylldoyle/svg-sanitizer](https://github.com/darylldoyle/svg-sanitizer).
+Return or ouput inline \<svg\>. All classes in SVG are changed to unique using random hash. In UploadImage, the SVG is also sanitized using [darylldoyle/svg-sanitizer](https://github.com/darylldoyle/svg-sanitizer).
 
-- `@return string` SVG code.
+When the file can't be read (eg. a mistyped icon name) or the sanitizer rejects the SVG (eg. its root element is not \<svg\>), an empty string is returned and the reason is reported through the [`fri_image_issue` action](./wp-filters.md#shared-action), so it doesn't disappear from the output without a trace.
+
+- `@return string` SVG code, empty string when the file can't be read or the sanitizer rejects it.
 - `@throws LogicException` If the image is not of SVG type. Check image using `isSvg()` before.
 
 ---

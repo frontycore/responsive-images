@@ -277,11 +277,42 @@ class UploadImage extends BaseImage
 
 	/**
 	 * Add inline SVG sanitize.
+	 *  The sanitizer returns false for input it can't process safely, eg. an SVG whose root
+	 *  element is not <svg>. Such SVG is left out of the output and the issue is reported.
 	 * @inheritDoc
+	 *
+	 * @see static::reportIssue()
 	 */
 	public function getInlineSvg(): string
 	{
-		return $this->getSanitizer()->sanitize(parent::getInlineSvg());
+		$svg = parent::getInlineSvg();
+		if ($svg === '') return '';
+
+		$sanitizer = $this->getSanitizer();
+		$sanitized = $sanitizer->sanitize($svg);
+		if ($sanitized === false) {
+			$this->reportIssue(sprintf(
+				"SVG '%s' was rejected by the sanitizer: %s",
+				$this->getUrl(),
+				$this->getSanitizerIssues($sanitizer)
+			));
+			return '';
+		}
+		return $sanitized;
+	}
+
+	/**
+	 * Get issues reported by the SVG sanitizer as a single line.
+	 * @param Sanitizer $sanitizer
+	 * @return string
+	 */
+	private function getSanitizerIssues(Sanitizer $sanitizer): string
+	{
+		$issues = array_filter(array_map(
+			fn($issue): string => strval(is_array($issue) ? ($issue['message'] ?? '') : $issue),
+			$sanitizer->getXmlIssues()
+		));
+		return (count($issues) > 0) ? implode('; ', $issues) : 'no details given';
 	}
 
 	/**
