@@ -699,7 +699,10 @@ class UploadImage extends BaseImage
 	 * @param bool $withPicture Whether to wrap the <img> in a <picture> tag with the image formats
 	 * 	set on the ImageSizeList. Beware that it changes the markup of the block, ie. CSS which
 	 * 	targets a direct child of the figure or the link has to be updated.
-	 * @return string
+	 * @return string The rebuilt block, or the given content when the block holds no image to
+	 * 	replace - the issue is reported in that case.
+	 *
+	 * @see static::reportIssue()
 	 * @see https://naswp.cz/mistrovska-optimalizace-obrazku-nejen-pro-wordpress/#nove-workflow-dodatek-obrazky-v-gutenbergu
 	 * @see static::getResponsivePictureTag()
 	 */
@@ -709,16 +712,23 @@ class UploadImage extends BaseImage
 		$dom->loadHTML('<?xml encoding="utf-8" ?>' . $blockContent, LIBXML_NOERROR);
 
 		$img = $dom->getElementsByTagName('img')->item(0);
-		assert($img instanceof DOMElement);
-		if (Strings::lower(pathinfo(strval($img?->getAttribute('src')), PATHINFO_EXTENSION)) === 'svg') return $blockContent;
+		if (!$img instanceof DOMElement) {
+			// Eg. an image block whose author didn't choose any image yet
+			$this->reportIssue('The core/image block has no <img> element to replace.');
+			return $blockContent;
+		}
+		if (Strings::lower(pathinfo(strval($img->getAttribute('src')), PATHINFO_EXTENSION)) === 'svg') return $blockContent;
 
 		$div = $dom->getElementsByTagName('div')->item(0);
 		$figure = $dom->getElementsByTagName('figure')->item(0);
 		$link = $dom->getElementsByTagName('a')->item(0);
 		$caption = $dom->getElementsByTagName('figcaption')->item(0);
 
-		assert($figure instanceof DOMElement);
-		$class = strval($figure?->getAttribute('class'));
+		if (!$figure instanceof DOMElement) {
+			$this->reportIssue('The core/image block has no <figure> element to rebuild.');
+			return $blockContent;
+		}
+		$class = strval($figure->getAttribute('class'));
 		if ($div instanceof DOMElement) $class .= ' ' . $div->getAttribute('class');
 
 		$imgStyle = strval($img->getAttribute('style'));

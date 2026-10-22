@@ -129,6 +129,8 @@ add_filter('render_block', function(string $blockContent, array $block) {
 }, 10, 2);
 ```
 
+A block which holds no image at all, eg. one whose author didn't choose any yet, is returned unchanged and reported through the [`fri_image_issue`](./wp-filters.md#shared-action) action.
+
 To offer the block image in alternative formats, set them on the ImageSizeList and switch the last argument on: `replaceImageBlock($blockContent, $sizes, false, true, true)`. It wraps the \<img\> in a \<picture\> tag, ie. it changes the markup of the block, so CSS which targets a direct child of the figure or of the link has to be updated. See [image formats](./image-sizes.md#image-formats).
 
 **Performance concern**: Gutenberg blocks are made in React, since this library is server-side, it parses the block HTML with `DOMDocument`, which might be a little slow. Consider using page cache to suppress this issue.
