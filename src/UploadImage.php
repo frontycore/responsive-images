@@ -415,6 +415,8 @@ class UploadImage extends BaseImage
 
 	/**
 	 * Get SVG sanitizer.
+	 * 	The XML prolog is removed, as the sanitized code is meant to be inlined into HTML,
+	 * 	where an HTML parser turns the prolog into a bogus comment.
 	 * @return Sanitizer
 	 */
 	private function getSanitizer(): Sanitizer
@@ -422,6 +424,7 @@ class UploadImage extends BaseImage
 		if (!$this->sanitizer) {
 			$this->sanitizer = new Sanitizer();
 			$this->sanitizer->minify(true);
+			$this->sanitizer->removeXMLTag(true);
 		}
 		return $this->sanitizer;
 	}
