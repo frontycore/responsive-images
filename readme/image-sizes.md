@@ -84,6 +84,8 @@ ImageSizeList represents a group of ImageSize objects related to breakpoints. Im
 - `isMobileFirst(): bool` Is mobile-first notation active?
 - `setDensities(array $densities): ImageSizeList` Set pixel densities, in which to offer every declared width in `srcset`. Supports chaining. Throws `InvalidArgumentException` if no positive density is given. See [Pixel densities](#pixel-densities).
 - `getDensities(): array` Get pixel densities sorted from the smallest one.
+- `setFormats(array $formats): ImageSizeList` Set image formats (MIME types), in which to offer the image as \<picture\> sources. Supports chaining. Throws `InvalidArgumentException` if a value is not an image MIME type. See [Image formats](#image-formats).
+- `getFormats(): array` Get image formats in the order of preference, empty array when none is set.
 - `isEmpty(): bool` Is there any ImageSize?
 - `getWidest(): ImageSize` Get widest image size. Throws `RuntimeException` if list is empty.
 
@@ -152,13 +154,35 @@ $sizes = new ImageSizeList(true, null, null, [1, 2, 3]);
 ```
 
 Candidates are:
-- **limited by the original image**, so nothing is upscaled - a 2048px wide original ends the ladder at 2048w even when the 2x candidate would be 2200w,
-- **deduplicated by the really returned width**, so densities clamped to the same width are offered just once,
-- **checked for the required aspect ratio** - a cropped candidate, which the resizer wasn't able to crop as required, is dropped instead of being offered with a different crop.
+- **limited by the original image**, so nothing is upscaled - a 2048px wide original ends the ladder at 2048w even when the 2x candidate would be 2200w. The required size is clamped *before* the resizer is asked, which matters: asked for more than the original has, resizers tend to return the untouched original, ie. an image of a different aspect ratio than the required crop,
+- **deduplicated by the really returned width**, as a flat `srcset` can't hold two files of the same `w` descriptor. Slots are resolved from the widest declared one, so the kept candidate of a colliding width is always the one cropped for the widest slot, whatever the order of the list is,
+- **checked for the required aspect ratio** - a cropped candidate, which the resizer wasn't able to crop as required, is dropped instead of being offered with a different crop. The candidate of the lowest density is kept even then, so the `srcset` is never left empty, eg. on a site with no resizer plugin at all.
 
-The `sizes` attribute is not affected by densities at all, it always describes the slot width as declared.
+The `sizes` attribute is not affected by densities at all, it always describes the slot width as declared - a smaller file doesn't make the slot narrower.
 
 > Every density means one more image to resize and to store on the server. Keep the list short, `[1, 2]` covers the vast majority of displays.
+
+### Image formats
+
+Modern formats like AVIF or WebP are offered through the \<picture\> tag, where each format is one \<source\> and the \<img\> stays as the fallback. Formats are set on the list and used by the picture methods only, so setting them never changes the output of the \<img\> methods:
+
+```php
+$sizes = img_sizes([
+	0 => [400, 250],
+	1200 => 1100
+])->setFormats(['image/avif', 'image/webp']);
+
+// <picture> with an AVIF and a WebP source, the browser takes the first one it supports
+img_upload($attachment_id)->responsivePictureTag($sizes);
+
+// The very same list in an <img> method: no formats are used, no <picture> is rendered
+img_upload($attachment_id)->responsiveImgTag($sizes);
+```
+
+**This library converts nothing.** It only offers the files your project confirms through the [`fri_upload_format_src`](./wp-filters.md#uploadimage-filters) filter, so without that filter no source is rendered at all. See [getResponsivePictureTag()](./images.md#getresponsivepicturetag-and-responsivepicturetag) for the whole picture, including ready-made filters for the usual converter layouts.
+
+> The order matters, the browser takes the first source it supports - put the most efficient format first.
+> Formats are ignored for SVG and with [Auto Cloudinary](https://wordpress.org/plugins/auto-cloudinary/), which negotiates the format itself by it's `fetch_format` transformation.
 
 ---
 

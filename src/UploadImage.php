@@ -166,39 +166,54 @@ class UploadImage extends BaseImage
 	 * @param ImageSizeList $sizes
 	 * @param array $attrs
 	 * @return Html
+	 *
+	 * @see static::getResponsivePictureTag() To offer the image in alternative formats as well.
 	 */
 	public function getResponsiveImgTag(ImageSizeList $sizes, array $attrs = []): Html
 	{
-		$widest = $sizes->getWidest();
-		$maxWidth = $widest->getWidth();
-		$maxHeight = $widest->getHeight();
-
 		if ($this->isSvg()) {
-			return $this->getImgTag(new ImageSize($maxWidth, $maxHeight ?? $maxWidth), $attrs);
+			$widest = $sizes->getWidest();
+			$width = $widest->getWidth();
+			$height = $widest->getHeight();
+			return $this->getImgTag(new ImageSize($width, $height ?? $width), $attrs);
 		}
 
-		$sets = $this->createSrcsetSizes($sizes);
-		$widestSrc = $this->getSizedSrc($widest);
+		$original = $this->getOriginalSize();
+		return $this->createResponsiveImgTag($sizes, $attrs, $this->createSrcsetSizes($sizes, $original), $original);
+	}
+
+	/**
+	 * Create <img> tag from already created srcset and sizes attributes.
+	 * @param ImageSizeList $sizes
+	 * @param array $attrs
+	 * @param ArrayHash $sets Srcset candidates and sizes slots.
+	 * @param array|null $original Size of the original image, null when it is unknown.
+	 * @return Html
+	 *
+	 * @see static::createSrcsetSizes()
+	 */
+	private function createResponsiveImgTag(ImageSizeList $sizes, array $attrs, ArrayHash $sets, ?array $original): Html
+	{
+		// The src attribute is the 1x candidate of the widest slot, ie. the fallback
+		// for browsers which ignore srcset, clamped the same way as the candidates
+		$widestSrc = $this->getDensitySrc($sizes->getWidest(), 1.0, $original);
 
 		$setsSizes = apply_filters('fri_upload_responsive_img_sizes', $sets->sizes, $this);
 		$setsSrcsets = apply_filters('fri_upload_responsive_img_srcset', $sets->srcsets, $this);
 
-		if (isset($widestSrc[0])) {
+		if ($widestSrc !== null) {
 			$attrs = array_merge($attrs, [
-				'src' => $widestSrc[0],
+				'src' => esc_url_raw($widestSrc[0]),
 				'sizes' => implode(', ', $setsSizes),
 				'srcset' => implode(', ', $setsSrcsets)
 			]);
-		}
-
-		if (!isset($attrs['width']) && $widestSrc) {
 			if (!isset($attrs['width'])) $attrs['width'] = $widestSrc[1];
 			if (!isset($attrs['height'])) $attrs['height'] = $widestSrc[2];
 		}
+
 		if (!isset($attrs['alt'])) $attrs['alt'] = $this->getDefaultAlt();
 		$attrs['alt'] = $this->sanitizeAlt(strval($attrs['alt']));
 		$el = Html::el('img', $attrs);
-
 		apply_filters('fri_upload_responsive_img_tag', $el, $sizes, $this);
 		return $el;
 	}
@@ -216,9 +231,73 @@ class UploadImage extends BaseImage
 	}
 
 	/**
+	 * Get <picture> tag with the responsive <img> and <source> elements of alternative image formats.
+	 * 	The <picture> element is rendered always, so templates get a stable structure to style,
+	 * 	while sources are rendered only for the formats set by ImageSizeList::setFormats() and
+	 * 	confirmed by the `fri_upload_format_src` filter. Without them the tag holds the very
+	 * 	same <img> as getResponsiveImgTag() returns.
+	 *
+	 * 	Beware of lazyloaders: inside <picture> the `srcset` of a <source> wins over the <img>,
+	 * 	so a lazyloader which rewrites attributes of the <img> only would be silently bypassed
+	 * 	and the browser would load every source immediately. Rewrite the sources as well
+	 * 	through the `fri_upload_picture_sources` filter.
+	 * @param ImageSizeList $sizes
+	 * @param array $attrs Attributes of the <img> tag.
+	 * @param array $pictureAttrs Attributes of the <picture> tag.
+	 * @return Html
+	 *
+	 * @see ImageSizeList::setFormats()
+	 * @see static::getResponsiveImgTag()
+	 */
+	public function getResponsivePictureTag(ImageSizeList $sizes, array $attrs = [], array $pictureAttrs = []): Html
+	{
+		if ($this->isSvg()) {
+			$img = $this->getResponsiveImgTag($sizes, $attrs);
+			$candidates = [];
+		} else {
+			$original = $this->getOriginalSize();
+			$sets = $this->createSrcsetSizes($sizes, $original);
+			$img = $this->createResponsiveImgTag($sizes, $attrs, $sets, $original);
+			$candidates = $sets->candidates;
+		}
+
+		$sources = $this->createPictureSources($sizes, $candidates, strval($img->sizes));
+		$sources = apply_filters('fri_upload_picture_sources', $sources, $sizes, $this);
+
+		$el = Html::el('picture', $pictureAttrs);
+		foreach ($sources as $source) {
+			$el->addHtml($source);
+		}
+		$el->addHtml($img);
+		apply_filters('fri_upload_picture_tag', $el, $sizes, $this);
+		return $el;
+	}
+
+	/**
+	 * Output responsive picture tag.
+	 * @param ImageSizeList $sizes
+	 * @param array $attrs Attributes of the <img> tag.
+	 * @param array $pictureAttrs Attributes of the <picture> tag.
+	 *
+	 * @see static::getResponsivePictureTag()
+	 */
+	public function responsivePictureTag(ImageSizeList $sizes, array $attrs = [], array $pictureAttrs = [])
+	{
+		echo $this->getResponsivePictureTag($sizes, $attrs, $pictureAttrs);
+	}
+
+	/**
 	 * Output preload link of the image with given responsive sizes.
 	 * 	Put this to <head> section for soon-to-render images to optimize CLS.
+	 *
+	 * 	The link preloads the <img> candidates, ie. the original image format. Don't combine it
+	 * 	with image formats of a <picture> tag: a preload link per format would be downloaded by
+	 * 	every browser which supports more than one of them, as nothing makes the browser choose
+	 * 	just one of several preloads. Preload scanners read <picture> on their own anyway.
 	 * @param ImageSizeList $sizes
+	 * @param array $attrs
+	 *
+	 * @see static::getResponsivePictureTag()
 	 */
 	public function responsivePreloadLink(ImageSizeList $sizes, array $attrs = [])
 	{
@@ -251,12 +330,61 @@ class UploadImage extends BaseImage
 	{
 		if ($sizes === null) $img = $this->getImgTag(new ImageSize($width, $height), $imgAttrs);
 		else $img = $this->getResponsiveImgTag($sizes, $imgAttrs);
+		return $this->wrapInRatio($img, $width, $height, $wrapAttrs, $sizes);
+	}
 
+	/**
+	 * Get picture tag wrapped in Bootstrap 5 figure.ratio, which ensures it's aspect ratio.
+	 * 	The <picture> element is the direct child of the figure, so CSS which stretches
+	 * 	the image has to target `figure.ratio > picture > img`.
+	 * @param int $width Image width from which count ratio.
+	 * @param int $height Image height from which to count ratio.
+	 * @param ImageSizeList $sizes
+	 * @param array $wrapAttrs
+	 * @param array $imgAttrs Attributes of the <img> tag.
+	 * @param array $pictureAttrs Attributes of the <picture> tag.
+	 * @return Html
+	 *
+	 * @see static::getResponsivePictureTag()
+	 */
+	public function getAspectPictureTag(int $width, int $height, ImageSizeList $sizes, array $wrapAttrs = [], array $imgAttrs = [], array $pictureAttrs = []): Html
+	{
+		$picture = $this->getResponsivePictureTag($sizes, $imgAttrs, $pictureAttrs);
+		return $this->wrapInRatio($picture, $width, $height, $wrapAttrs, $sizes);
+	}
+
+	/**
+	 * Output picture tag wrapped in fixed ratio figure.
+	 * @param int $width
+	 * @param int $height
+	 * @param ImageSizeList $sizes
+	 * @param array $wrapAttrs
+	 * @param array $imgAttrs Attributes of the <img> tag.
+	 * @param array $pictureAttrs Attributes of the <picture> tag.
+	 *
+	 * @see static::getAspectPictureTag()
+	 */
+	public function aspectPictureTag(int $width, int $height, ImageSizeList $sizes, array $wrapAttrs = [], array $imgAttrs = [], array $pictureAttrs = [])
+	{
+		echo $this->getAspectPictureTag($width, $height, $sizes, $wrapAttrs, $imgAttrs, $pictureAttrs);
+	}
+
+	/**
+	 * Wrap given image tag in Bootstrap 5 figure.ratio of given aspect ratio.
+	 * @param Html $inner Tag to wrap, ie. <img> or <picture>.
+	 * @param int $width Image width from which count ratio.
+	 * @param int $height Image height from which to count ratio.
+	 * @param array $wrapAttrs
+	 * @param ImageSizeList|null $sizes Passed to the filter as a context only.
+	 * @return Html
+	 */
+	private function wrapInRatio(Html $inner, int $width, int $height, array $wrapAttrs, ?ImageSizeList $sizes): Html
+	{
 		$ratio = $height / $width * 100;
 		$el = Html::el('figure', $wrapAttrs)
 			->addClass('ratio')
 			->setStyle('--bs-aspect-ratio:' . $ratio . '%')
-			->addHtml($img);
+			->addHtml($inner);
 		apply_filters('fri_upload_aspect_img_tag', $el, $width, $height, $ratio, $sizes, $this);
 		return $el;
 	}
@@ -318,71 +446,172 @@ class UploadImage extends BaseImage
 
 	/**
 	 * Create arrays of `srcset` and `sizes` HTML attributes for img tag.
-	 * 	While `sizes` describes the slot width declared for each breakpoint, `srcset` is built
-	 * 	independently of it: every declared width is offered in all pixel densities set in the
-	 * 	ImageSizeList, so even the widest breakpoint has a dense enough candidate on retina
-	 * 	displays. Candidates are deduplicated by the really returned width.
+	 * 	The `sizes` attribute describes how wide the image slot is in CSS pixels, so it is
+	 * 	built from the widths declared for the breakpoints, never from the widths the resizer
+	 * 	returned - a smaller file doesn't make the slot narrower.
+	 * 	`srcset` is built independently of it: every declared width is offered in all pixel
+	 * 	densities set in the ImageSizeList, so even the widest breakpoint has a dense enough
+	 * 	candidate on retina displays.
 	 * @param ImageSizeList $imageSizes
-	 * @return ArrayHash
+	 * @param array|null $original Size of the original image, null when it is unknown.
+	 * @return ArrayHash sizes - slots of the `sizes` attribute, srcsets - candidates of the
+	 * 	`srcset` attribute, candidates - the same candidates as [0 => URL, 1 => width] pairs.
 	 *
 	 * @see ImageSizeList::setDensities()
 	 */
-	private function createSrcsetSizes(ImageSizeList $imageSizes): ArrayHash
+	private function createSrcsetSizes(ImageSizeList $imageSizes, ?array $original): ArrayHash
 	{
-		$sizes = $srcsets = [];
-		$original = $this->getOriginalSize();
+		$sizes = $slots = $candidates = [];
 
 		foreach ($imageSizes as $viewport => $size) {
-			$src = $this->getSizedSrc($size);
-			if (!$src) continue;
-
+			$slots[] = $size;
 			if ($imageSizes->isLast()) {
-				$sizes[] = $src[1] . 'px';
+				$sizes[] = $size->getWidth() . 'px';
 			} else {
 				$media = ($imageSizes->isMobileFirst()) ? 'min-width' : 'max-width';
-				$sizes[] = sprintf('(%s: %dpx) %dpx', $media, $viewport, $src[1]);
-			}
-
-			foreach ($imageSizes->getDensities() as $density) {
-				// The 1x candidate is the declared size, already resolved for the `sizes` attribute
-				$candidate = ($density === 1.0) ? $src : $this->getDensitySrc($size, $density, $original);
-				if (!$candidate || !isset($candidate[1])) continue;
-
-				// Keep the first candidate of each width, eg. densities clamped to the same original width
-				$width = intval($candidate[1]);
-				if ($width <= 0 || isset($srcsets[$width])) continue;
-				$srcsets[$width] = esc_url_raw($candidate[0]) . ' ' . $width . 'w';
+				$sizes[] = sprintf('(%s: %dpx) %dpx', $media, $viewport, $size->getWidth());
 			}
 		}
 
-		ksort($srcsets);
+		// A flat srcset can't hold two files of the same `w` descriptor, so candidates are
+		// deduplicated by the really returned width. Slots are asked from the widest one, so
+		// the kept candidate of a colliding width is always the one cropped for the widest
+		// slot, ie. for the viewport which asks for such a wide file, whatever the list order is.
+		usort($slots, fn(ImageSize $a, ImageSize $b): int => $b->getWidth() <=> $a->getWidth());
+
+		foreach ($slots as $size) {
+			foreach ($imageSizes->getDensities() as $index => $density) {
+				$candidate = $this->getDensitySrc($size, $density, $original);
+				if ($candidate === null) continue;
+
+				// The lowest density is the fallback candidate of the slot, kept even when the
+				// resizer returned another aspect ratio, so the srcset is never left empty,
+				// eg. on a site without any resizer plugin
+				$width = intval($candidate[1]);
+				if ($index > 0 && !$this->hasRequiredRatio($size, $width, intval($candidate[2]))) continue;
+				if ($width <= 0 || isset($candidates[$width])) continue;
+
+				$candidates[$width] = [$candidate[0], $width];
+			}
+		}
+
+		ksort($candidates);
+		$candidates = array_values($candidates);
 		return ArrayHash::from([
 			'sizes' => $sizes,
-			'srcsets' => array_values($srcsets)
+			'srcsets' => array_map(fn(array $candidate): string => esc_url_raw($candidate[0]) . ' ' . $candidate[1] . 'w', $candidates),
+			'candidates' => $candidates
 		], false);
+	}
+
+	/**
+	 * Create <source> elements of alternative image formats for the <picture> tag.
+	 * 	A source is rendered only when every single candidate is confirmed in the given format,
+	 * 	so the browser never gets a sparser ladder in the format it prefers. Formats are skipped
+	 * 	altogether for SVG and with Auto Cloudinary, which negotiates the format itself.
+	 * @param ImageSizeList $imageSizes
+	 * @param array $candidates Srcset candidates as [0 => URL, 1 => width] pairs.
+	 * @param string $sizesAttr The `sizes` attribute of the <img> tag.
+	 * @return array|Html[]
+	 *
+	 * @see ImageSizeList::setFormats()
+	 * @see static::getFormatSrc()
+	 */
+	private function createPictureSources(ImageSizeList $imageSizes, array $candidates, string $sizesAttr): array
+	{
+		if ($this->isSvg() || function_exists('cloudinary_url')) return [];
+
+		$sources = [];
+		foreach ($imageSizes->getFormats() as $format) {
+			$srcsets = [];
+			foreach ($candidates as $candidate) {
+				$src = $this->getFormatSrc(strval($candidate[0]), $format);
+				// An incomplete ladder would be worse than none, so the whole format is left out
+				if ($src === null) continue 2;
+				$srcsets[] = esc_url_raw($src) . ' ' . intval($candidate[1]) . 'w';
+			}
+			if (count($srcsets) <= 0) continue;
+
+			$attrs = ['type' => $format, 'srcset' => implode(', ', $srcsets)];
+			if ($sizesAttr !== '') $attrs['sizes'] = $sizesAttr;
+			$sources[] = Html::el('source', $attrs);
+		}
+		return $sources;
+	}
+
+	/**
+	 * Get URL of the image file in given format.
+	 * 	This library converts nothing, it only offers files which a project confirms through
+	 * 	the `fri_upload_format_src` filter. Conversion plugins store derivatives in layouts too
+	 * 	different to guess - in place or in a mirrored directory tree, with the original
+	 * 	extension replaced or kept - so there is no default: without the filter no <source>
+	 * 	is rendered at all.
+	 * @param string $url URL of the candidate in the original format.
+	 * @param string $format Required image MIME type, eg. 'image/avif'.
+	 * @return string|null URL of the file in the required format, null when there is none.
+	 */
+	private function getFormatSrc(string $url, string $format): ?string
+	{
+		$src = apply_filters('fri_upload_format_src', null, $url, $this->getUploadPath($url), $format, $this);
+		if (!is_string($src) || trim($src) === '') return null;
+		return $src;
+	}
+
+	/**
+	 * Get server path of a file inside the uploads directory by it's URL.
+	 * 	Only the uploads base URL is translated, as resizers and converters keep their files in
+	 * 	various subtrees of it - cutting WP_CONTENT_DIR out of a path string wouldn't find them.
+	 * @param string $url
+	 * @return string|null Null when the URL doesn't point into the uploads directory, eg. to a CDN.
+	 */
+	private function getUploadPath(string $url): ?string
+	{
+		$uploads = wp_get_upload_dir();
+		$baseurl = $this->withoutScheme(strval($uploads['baseurl'] ?? ''));
+		$basedir = rtrim(strval($uploads['basedir'] ?? ''), '/');
+		if ($baseurl === '' || $basedir === '') return null;
+
+		$url = $this->withoutScheme($url);
+		if (!str_starts_with($url, $baseurl . '/')) return null;
+
+		$path = strval(parse_url(substr($url, strlen($baseurl)), PHP_URL_PATH));
+		if ($path === '') return null;
+		return $basedir . '/' . ltrim(urldecode($path), '/');
+	}
+
+	/**
+	 * Strip URL scheme, so that http, https and protocol-relative URLs are comparable.
+	 * @param string $url
+	 * @return string
+	 */
+	private function withoutScheme(string $url): string
+	{
+		return strval(preg_replace('#^(?:[a-z][a-z0-9+.-]*:)?//#i', '//', trim($url)));
 	}
 
 	/**
 	 * Get image URL, width and height for given ImageSize multiplied by pixel density.
 	 * 	The required size is clamped to the original image size before the resizer is asked,
-	 * 	so nothing is upscaled: asked for a size larger than the original,
+	 * 	so nothing is upscaled. Asked for a size larger than the original,
 	 * 	bis_get_attachment_image_src() returns the untouched original, ie. an image of
-	 * 	a different aspect ratio than the required crop.
+	 * 	a different aspect ratio than the required crop - which is why even the 1x density
+	 * 	is resolved through this method. Clamping is not dropping: the clamped size keeps the
+	 * 	required ratio, so a candidate is always returned.
 	 * @param ImageSize $size Size declared for a breakpoint, ie. in 1x density.
 	 * @param float $density Pixel density (DPR) to multiply the size with.
 	 * @param array|null $original Size of the original image, null when it is unknown.
 	 * @return array|null [0 => URL, 1 => image width, 2 => image height],
-	 * 	null when the resizer didn't return the required aspect ratio.
+	 * 	null when the resizer returned nothing.
 	 *
 	 * @see static::getSizedSrc()
+	 * @see static::hasRequiredRatio()
 	 */
 	private function getDensitySrc(ImageSize $size, float $density, ?array $original): ?array
 	{
 		$required = $size->getScaled($this->getDensityScale($size, $density, $original));
 		$src = $this->getSizedSrc($required);
-		if (!$src || !isset($src[1], $src[2])) return null;
-		if (!$this->hasRequiredRatio($required, intval($src[1]), intval($src[2]))) return null;
-		return $src;
+		if (!$src || !isset($src[0], $src[1], $src[2]) || $src[0] === '') return null;
+		return array_values($src);
 	}
 
 	/**
@@ -467,10 +696,14 @@ class UploadImage extends BaseImage
 	 * @param ImageSizeList $sizes
 	 * @param bool $withRatio Whether to add aspect-ratio box.
 	 * @param bool $withMaxWidth Whether to add max-width to aspect-ratio box.
+	 * @param bool $withPicture Whether to wrap the <img> in a <picture> tag with the image formats
+	 * 	set on the ImageSizeList. Beware that it changes the markup of the block, ie. CSS which
+	 * 	targets a direct child of the figure or the link has to be updated.
 	 * @return string
 	 * @see https://naswp.cz/mistrovska-optimalizace-obrazku-nejen-pro-wordpress/#nove-workflow-dodatek-obrazky-v-gutenbergu
+	 * @see static::getResponsivePictureTag()
 	 */
-	public function replaceImageBlock(string $blockContent, ImageSizeList $sizes, bool $withRatio = false, bool $withMaxWidth = true): string
+	public function replaceImageBlock(string $blockContent, ImageSizeList $sizes, bool $withRatio = false, bool $withMaxWidth = true, bool $withPicture = false): string
 	{
 		$dom = new DOMDocument();
 		$dom->loadHTML('<?xml encoding="utf-8" ?>' . $blockContent, LIBXML_NOERROR);
@@ -515,13 +748,17 @@ class UploadImage extends BaseImage
 				->addStyle($style);
 		}
 
-		$imgTag = $this->getResponsiveImgTag($sizes, [
+		$imgAttrs = [
 			'class' => $img->getAttribute('class'),
 			'id' => $img->getAttribute('id'),
 			'alt' => $img->getAttribute('alt'),
 			'title' => $img->getAttribute('title')
-		]);
-		if ($imgStyle) $imgTag->style($imgStyle);
+		];
+		if ($imgStyle) $imgAttrs['style'] = $imgStyle;
+
+		$imgTag = ($withPicture)
+			? $this->getResponsivePictureTag($sizes, $imgAttrs)
+			: $this->getResponsiveImgTag($sizes, $imgAttrs);
 		$imgParent->addHtml($imgTag);
 
 		if ($caption) {

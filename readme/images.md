@@ -162,9 +162,11 @@ echo $img->getImgLink(['class' => 'lightbox'], img_size(1920))
 
 Get or output responsive \<img\> tag with `sizes` and `srcset` arguments calculated by given ImageSizeList.
 
-The `sizes` attribute describes the slot width declared for each breakpoint, while `srcset` is built independently of it: every declared width is offered in all [pixel densities](./image-sizes.md#pixel-densities) of the ImageSizeList (`[1, 2]` by default), so retina displays have a dense enough candidate even in the widest breakpoint. Candidates are limited by the size of the original image, so nothing is upscaled.
+The `sizes` attribute describes how wide the image slot is in CSS pixels, so it is built from the widths declared for the breakpoints - never from the widths the resizer returned, as a smaller file doesn't make the slot narrower. The `srcset` attribute is built independently of it: every declared width is offered in all [pixel densities](./image-sizes.md#pixel-densities) of the ImageSizeList (`[1, 2]` by default), so retina displays have a dense enough candidate even in the widest breakpoint. Candidates are limited by the size of the original image, so nothing is upscaled.
 
-Attributes `width` and `height` will be set according to the widest image scale found in ImageSizeList.
+Attributes `src`, `width` and `height` are taken from the 1x candidate of the widest size found in ImageSizeList, ie. from the fallback for browsers which ignore `srcset`.
+
+To offer the image in alternative formats as well, see [getResponsivePictureTag()](#getresponsivepicturetag-and-responsivepicturetag).
 
 Attribute `alt` will be automatically filled with first non-empty field alt or title set in WP Media Library.
 
@@ -235,6 +237,94 @@ Output:
 	class="img-fluid">
 ```
 
+### `responsivePreloadLink()`
+
+Output `<link rel="preload" as="image">` of the responsive image, ie. of the very same candidates `getResponsiveImgTag()` would offer. Put it to the \<head\> section for an image which renders in the first viewport, typically a hero, to let the browser start loading it before it parses the markup.
+
+- `@param ImageSizeList $sizes` Sizes of the responsive image.
+- `@param array $attrs = []` Reserved for additional attributes of the \<link\> tag.
+
+Output:
+```html
+<link rel="preload" as="image" href="…" imagesrcset="… 400w, … 1100w, … 2048w" imagesizes="(min-width: 1200px) 1100px, 400px">
+```
+
+> **Don't combine it with image [formats](./image-sizes.md#image-formats).** The link preloads the original format, so a browser which picks an AVIF source out of a \<picture\> downloads the image twice. One link per format isn't a solution either - nothing makes the browser pick just one of several preloads, so a browser which supports both AVIF and WebP downloads both. Preload scanners read \<picture\> on their own, so an image offered in several formats is better left to them.
+
+### `getResponsivePictureTag()` and `responsivePictureTag()`
+
+Get or output \<picture\> tag, which offers the image in the [formats](./image-sizes.md#image-formats) set on the ImageSizeList - typically AVIF and WebP - with the responsive \<img\> of `getResponsiveImgTag()` as the fallback.
+
+**This library converts nothing.** Every \<source\> is built from files your project confirms through the `fri_upload_format_src` filter, so without that filter the tag holds the very same \<img\> as `getResponsiveImgTag()` returns. A format is offered only when **all** candidates of the `srcset` are confirmed in it, so the browser never gets a sparser ladder in the format it prefers.
+
+The \<picture\> element is rendered always, even without any format, so your CSS has one stable structure to target.
+
+- `@param ImageSizeList $sizes` Sizes of the responsive image. See [ImageSizeList docs](./image-sizes.md#imagesizelist-object).
+- `@param array $attrs = []` HTML attributes of the \<img\> tag.
+- `@param array $pictureAttrs = []` HTML attributes of the \<picture\> tag.
+- `@return Html` [Html object](https://doc.nette.org/en/3.0/html-elements) of \<picture\> with \<source\> and \<img\> children.
+
+> Uses `fri_upload_format_src`, `fri_upload_picture_sources` and `fri_upload_picture_tag` filters, besides all the filters of `getResponsiveImgTag()`. See [more about WP filters](./wp-filters.md).
+
+Example:
+```php
+$sizes = img_sizes([
+	0 => [400, 250],
+	1200 => 1100
+])->setFormats(['image/avif', 'image/webp']);
+
+img_upload($attachment_id)->responsivePictureTag($sizes, ['class' => 'img-fluid', 'alt' => 'My image']);
+```
+
+Output:
+```html
+<picture>
+	<source type="image/avif"
+		srcset="https://domain.com/wp-content/uploads/bis-images/2026/10/image-400x250-c.jpg.avif 400w,
+			https://domain.com/wp-content/uploads/bis-images/2026/10/image-1100x688-c.jpg.avif 1100w,
+			https://domain.com/wp-content/uploads/bis-images/2026/10/image-2048x1281-c.jpg.avif 2048w"
+		sizes="(min-width: 1200px) 1100px, 400px">
+	<source type="image/webp" srcset="…" sizes="(min-width: 1200px) 1100px, 400px">
+	<img
+		src="https://domain.com/wp-content/uploads/bis-images/2026/10/image-1100x688-c.jpg"
+		sizes="(min-width: 1200px) 1100px, 400px"
+		srcset="…"
+		width="1100" height="688"
+		alt="My image"
+		class="img-fluid">
+</picture>
+```
+
+#### Where do the converted files come from?
+
+Generating them is the project's job - a converter plugin, a CLI task or an action of your resizer. The library only needs to know the URL, which is what the `fri_upload_format_src` filter answers. Converters keep their files in layouts too different to guess, so there is no default. Two usual ones:
+
+```php
+// A) The derivative lies next to the original with the extension replaced:
+//    …/image-1100x688-c.jpg -> …/image-1100x688-c.avif
+add_filter('fri_upload_format_src', function (?string $src, string $url, ?string $path, string $format) {
+	$extension = ($format === 'image/avif') ? 'avif' : 'webp';
+	if ($path === null || !file_exists(preg_replace('#\.\w+$#', ".$extension", $path))) return null;
+	return preg_replace('#\.\w+$#', ".$extension", $url);
+}, 10, 4);
+
+// B) Converter for Media layout: a mirrored tree with the extension appended:
+//    …/uploads/image-1100x688-c.jpg -> …/uploads-webpc/uploads/image-1100x688-c.jpg.avif
+add_filter('fri_upload_format_src', function (?string $src, string $url, ?string $path, string $format) {
+	$extension = ($format === 'image/avif') ? 'avif' : 'webp';
+	$uploads = wp_get_upload_dir();
+	if ($path === null) return null;
+
+	$relative = substr($path, strlen($uploads['basedir'])) . '.' . $extension;
+	if (!file_exists(dirname($uploads['basedir']) . '/uploads-webpc/uploads' . $relative)) return null;
+	return dirname($uploads['baseurl']) . '/uploads-webpc/uploads' . $relative;
+}, 10, 4);
+```
+
+> **Lazyloaders have to rewrite the sources as well.** Inside \<picture\> the `srcset` of a \<source\> wins over the \<img\>, so a lazyloader which rewrites the \<img\> attributes only is silently bypassed and the browser loads every source immediately. Hook `fri_upload_picture_sources` for that.
+> **Don't preload a \<picture\>.** A `<link rel="preload">` per format would be downloaded by every browser which supports more than one of them, as nothing makes the browser pick just one of several preloads. Preload scanners read \<picture\> on their own anyway, see [responsivePreloadLink()](#responsivepreloadlink).
+> Formats are ignored for SVG and with [Auto Cloudinary](https://wordpress.org/plugins/auto-cloudinary/), which negotiates the format itself.
+
 ### `getAspectImgTag()` and `aspectImgTag()`
 
 Generate or outputs \<img\> tag wrapped in \<figure\> tag, which holds the image aspect-ratio before the image is loaded. It is useful with lazyloaded images to prevent [Cumulative Layout Shift](https://web.dev/cls/). Modern browsers starts to implement native ratio preserving images, so it might be redundant in the future.
@@ -302,6 +392,32 @@ Output:
 </figure>
 ```
 
+
+### `getAspectPictureTag()` and `aspectPictureTag()`
+
+The same as `getAspectImgTag()`, but the ratio preserving \<figure\> wraps a \<picture\> tag of `getResponsivePictureTag()`.
+
+- `@param int $width` Width for ratio calculation.
+- `@param int $height` Height for ratio calculation.
+- `@param ImageSizeList $sizes` Sizes of the responsive image including it's [formats](./image-sizes.md#image-formats).
+- `@param array $wrapAttrs = []` HTML attributes for wrapping \<figure\> tag.
+- `@param array $imgAttrs = []` HTML attributes for \<img\> tag.
+- `@param array $pictureAttrs = []` HTML attributes for \<picture\> tag.
+- `@return Html` [Html object](https://doc.nette.org/en/3.0/html-elements) of \<figure\> with \<picture\> child.
+
+> Uses `fri_upload_aspect_img_tag` filter, the very same one as `getAspectImgTag()`, see [more about WP filters](./wp-filters.md).
+
+Output:
+```html
+<figure class="my-figure ratio" style="--bs-aspect-ratio:62.5%">
+	<picture>
+		<source type="image/avif" srcset="…" sizes="…">
+		<img src="…" srcset="…" sizes="…" width="400" height="250" alt="My image" class="lazyloaded">
+	</picture>
+</figure>
+```
+
+> **The \<picture\> is the direct child of the figure**, so CSS which stretches the image to the box has to target `figure.ratio > picture > img` instead of `figure.ratio > img`. Bootstrap's own `.ratio` helper styles the first child, so it needs the same treatment.
 
 ---
 

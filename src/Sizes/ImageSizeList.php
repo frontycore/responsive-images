@@ -25,6 +25,9 @@ class ImageSizeList implements Iterator
 	/** @var array|float[] Pixel densities (DPR), in which to offer every image width in srcset. */
 	private $densities = [1.0, 2.0];
 
+	/** @var array|string[] Image formats (MIME types) to offer as <picture> sources, in order of preference. */
+	private $formats = [];
+
 	/** @var array|ImageSize[] */
 	private $sizes = [];
 
@@ -121,6 +124,39 @@ class ImageSizeList implements Iterator
 	public function getDensities(): array
 	{
 		return $this->densities;
+	}
+
+	/**
+	 * Set image formats, in which to offer the image as <picture> sources.
+	 * 	Formats are used by the picture methods only, eg. UploadImage::getResponsivePictureTag(),
+	 * 	so setting them never changes the output of the <img> methods.
+	 * 	This library generates no derivative: a source is rendered only for a format whose
+	 * 	files are confirmed by the `fri_upload_format_src` filter.
+	 * @param array $formats Image MIME types in order of preference, eg. ['image/avif', 'image/webp'].
+	 * 	Empty array (default) means no sources at all.
+	 * @return static
+	 *
+	 * @throws InvalidArgumentException When a value is not an image MIME type.
+	 */
+	public function setFormats(array $formats): static
+	{
+		$formats = array_map(fn($format): string => strtolower(trim(strval($format))), $formats);
+		foreach ($formats as $format) {
+			if (!preg_match('#^image/[a-z0-9][a-z0-9.+-]*$#', $format)) {
+				throw new InvalidArgumentException("'$format' is not an image MIME type, eg. 'image/avif'.");
+			}
+		}
+		$this->formats = array_values(array_unique($formats));
+		return $this;
+	}
+
+	/**
+	 * Get image formats, in which to offer the image as <picture> sources.
+	 * @return array|string[] Image MIME types in order of preference, empty array when none is set.
+	 */
+	public function getFormats(): array
+	{
+		return $this->formats;
 	}
 
 	/**

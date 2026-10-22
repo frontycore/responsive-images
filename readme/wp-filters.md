@@ -45,6 +45,25 @@ Both ThemeImage and UploadImage objects allows you to change some of their outpu
 	- `ImageSizeList $sizes` ImageSizeList given as method's input
 	- `UploadImage $image` The image object itself
 
+- **`fri_upload_format_src`** Confirm the URL of the image file in an alternative format, eg. AVIF or WebP. Used in *getResponsivePictureTag()*, *responsivePictureTag()*, *getAspectPictureTag()*, *aspectPictureTag()* and in *replaceImageBlock()* with the $withPicture argument. **This library converts nothing**, it only offers the files you confirm here, so without this filter no \<source\> is rendered at all. Return the URL of the file in the required format, or `null` when there is none - a format is offered only when all candidates of the `srcset` are confirmed in it. See [ready-made filters for the usual converter layouts](./images.md#where-do-the-converted-files-come-from). Arguments:
+	- `null $src` Always null, so an unhooked filter renders no source.
+	- `string $url` URL of the candidate in the original format, eg. 'https://domain.com/wp-content/uploads/bis-images/2026/10/image-1100x688-c.jpg'
+	- `string|null $path` Server path of the candidate, null when it doesn't point into the uploads directory, eg. to a CDN. Handy to check the file with `file_exists()`.
+	- `string $format` Required image MIME type, eg. 'image/avif'
+	- `UploadImage $image` The image object itself
+
+- **`fri_upload_picture_sources`** Change the \<source\> elements before they are added to the \<picture\> tag. Used in the same methods as `fri_upload_format_src`. Return the array. Arguments:
+	- `array $sources` [Html](https://doc.nette.org/en/3.0/html-elements) source objects with `type`, `srcset` and `sizes` attributes, in the order of the formats. Empty array when no format is confirmed.
+	- `ImageSizeList $sizes` ImageSizeList given as method's input
+	- `UploadImage $image` The image object itself
+
+	> **This is the hook a lazyloader needs.** Inside \<picture\> the `srcset` of a \<source\> wins over the \<img\>, so a lazyloader which rewrites the \<img\> attributes only is silently bypassed and the browser loads every source immediately.
+
+- **`fri_upload_picture_tag`** Change output of \<picture\> tag. Used in the same methods as `fri_upload_format_src`. Arguments:
+	- `Html $picture` [Html](https://doc.nette.org/en/3.0/html-elements) picture object including it's sources and image
+	- `ImageSizeList $sizes` ImageSizeList given as method's input
+	- `UploadImage $image` The image object itself
+
 - **`fri_upload_aspect_img_tag`** Change HTML output of \<figure class="ratio"\>. Used in *getAspectImgTag()* and *aspectImgTag()* methods. Arguments:
 	- `Html $figure` [Html](https://doc.nette.org/en/3.0/html-elements) figure object including image as it's child
 	- `int $width` Width for ratio calculation.
