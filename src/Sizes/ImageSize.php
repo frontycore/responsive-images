@@ -99,6 +99,24 @@ class ImageSize
 	}
 
 	/**
+	 * Get copy of the size with both dimensions multiplied by given scale.
+	 * 	Dimensions are multiplied after max width and height are applied, so the copy
+	 * 	is not limited by them again. Crop and transformations are kept untouched.
+	 * @param float $scale Positive multiplier, eg. pixel density of a display.
+	 * @return static
+	 */
+	public function getScaled(float $scale): static
+	{
+		$height = $this->getHeight();
+		$scaled = clone $this;
+		$scaled->width = max(1, intval(round($this->getWidth() * $scale)));
+		$scaled->height = ($height === null) ? null : max(1, intval(round($height * $scale)));
+		$scaled->maxWidth = null;
+		$scaled->maxHeight = null;
+		return $scaled;
+	}
+
+	/**
 	 * @return string
 	 */
 	public function getCropType(): string

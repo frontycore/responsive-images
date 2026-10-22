@@ -3,7 +3,7 @@
 Library that will make working with images in your responsive Wordpress template a breeze.
 
 **What's in the box:**
-- Generates \<img\> tags with precise `srcset` and `sizes` attributes for images from WP Media Library.
+- Generates \<img\> tags with precise `srcset` and `sizes` attributes for images from WP Media Library, including candidates for retina displays.
 - Generates \<img\> tags wrapped in aspect-ratio preserving wrapper for both WP Media images and theme images. Great to prevent CLS with lazyloaded images.
 - Clean API to define responsive image sizes in either mobile-first (min-width) or desktop-first (max-width) manner.
 - Helper to define images sizes based on taken colums in Bootstrap grid for each breakpoint.
@@ -33,15 +33,22 @@ img_upload($attachment_id)->responsiveImgTag($sizes, ['class' => 'img-fluid', 'a
 		(min-width: 768px) 700px,
 		(min-width: 576px) 500px,
 		400px"
-	srcset="https://res.cloudinary.com/your-name/q_auto:eco,f_auto,w_1100,c_fit/your-project/2021/05/your-image.jpg 1100w,
-		https://res.cloudinary.com/your-name/q_auto:eco,f_auto,w_900,c_fit/your-project/2021/05/your-image.jpg 900w,
-		https://res.cloudinary.com/your-name/q_auto:eco,f_auto,w_700,c_fit/your-project/2021/05/your-image.jpg 700w,
+	srcset="https://res.cloudinary.com/your-name/q_auto:eco,f_auto,w_400,h_250,c_fill/your-project/2021/05/your-image.jpg 400w,
 		https://res.cloudinary.com/your-name/q_auto:eco,f_auto,w_500,c_fit/your-project/2021/05/your-image.jpg 500w,
-		https://res.cloudinary.com/your-name/q_auto:eco,f_auto,w_400,h_250,c_fill/your-project/2021/05/your-image.jpg 400w"
+		https://res.cloudinary.com/your-name/q_auto:eco,f_auto,w_700,c_fit/your-project/2021/05/your-image.jpg 700w,
+		https://res.cloudinary.com/your-name/q_auto:eco,f_auto,w_800,h_500,c_fill/your-project/2021/05/your-image.jpg 800w,
+		https://res.cloudinary.com/your-name/q_auto:eco,f_auto,w_900,c_fit/your-project/2021/05/your-image.jpg 900w,
+		https://res.cloudinary.com/your-name/q_auto:eco,f_auto,w_1000,c_fit/your-project/2021/05/your-image.jpg 1000w,
+		https://res.cloudinary.com/your-name/q_auto:eco,f_auto,w_1100,c_fit/your-project/2021/05/your-image.jpg 1100w,
+		https://res.cloudinary.com/your-name/q_auto:eco,f_auto,w_1400,c_fit/your-project/2021/05/your-image.jpg 1400w,
+		https://res.cloudinary.com/your-name/q_auto:eco,f_auto,w_1800,c_fit/your-project/2021/05/your-image.jpg 1800w,
+		https://res.cloudinary.com/your-name/q_auto:eco,f_auto,w_2200,c_fit/your-project/2021/05/your-image.jpg 2200w"
 	width="1100" height="619"
 	alt="My image"
 	class="img-fluid">
 ```
+
+> Every declared width is offered in `srcset` in all [pixel densities](./readme/image-sizes.md#pixel-densities) (`[1, 2]` by default), limited by the size of the original image.
 
 > **Thanks a lot to [Adam Laita](https://github.com/adam-laita) and [his post](https://naswp.cz/mistrovska-optimalizace-obrazku-nejen-pro-wordpress/) about image optimization (in Czech only). It was the original inspiration for this library.**
 

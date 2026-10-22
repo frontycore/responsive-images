@@ -61,6 +61,7 @@ ImageSize::$defaultCloudinaryTransform = [
 - `getCropType(): string` Normalize given crop type to string as desbribed above.
 - `hasCrop(): bool` Normalize given crop type to boolean.
 - `getCloudinaryTransform(): array` Merge Cloudinary transformation from construct with default values.
+- `getScaled(float $scale): ImageSize` Get copy of the size with both dimensions multiplied by given $scale, eg. by a pixel density. Max width and height are applied before the multiplication, so they don't limit the copy again.
 
 ---
 
@@ -69,7 +70,11 @@ ImageSize::$defaultCloudinaryTransform = [
 ImageSizeList represents a group of ImageSize objects related to breakpoints. ImageSize objects can be given either from array or by fluent interface. It also holds information whether the sizes were given in mobile-first or desktop-first order.
 
 ### Public API:
-- `__construct(bool $mobileFirst = true)` Instantiate for either mobile- or desktop-frist notation
+- `__construct(bool $mobileFirst = true, int|null $maxWidth = null, int|null $maxHeight = null, array $densities = [1, 2])` Instantiate for either mobile- or desktop-frist notation
+	- `bool $mobileFirst` default `true` = mobile-first, `false` = desktop-first notation
+	- `int|null $maxWidth` Maximal image width, which won't be exceeded in any breakpoint.
+	- `int|null $maxHeight` Maximal image height, which won't be exceeded in any breakpoint.
+	- `array $densities` Pixel densities (DPR), in which to offer every declared width in `srcset`. See [Pixel densities](#pixel-densities).
 - `static fromArray(array $imageSizes, bool $mobileFirst = true): ImageSizeList` Instantiate using array of breakpoint widths (keys) and arguments for ImageSize object (values).
 	- `array $imageSizes`
 		- `int` array key: min-width or max-width breakpoint (according to $mobileFirst argument)
@@ -77,6 +82,8 @@ ImageSizeList represents a group of ImageSize objects related to breakpoints. Im
 	- `bool $mobileFirst` default `true` = mobile-first, `false` = desktop-first notation
 - `append(int $breakpoint, ImageSize $size): ImageSizeList` Append new ImageSize for given breakpoint, returns self object to chain.
 - `isMobileFirst(): bool` Is mobile-first notation active?
+- `setDensities(array $densities): ImageSizeList` Set pixel densities, in which to offer every declared width in `srcset`. Supports chaining. Throws `InvalidArgumentException` if no positive density is given. See [Pixel densities](#pixel-densities).
+- `getDensities(): array` Get pixel densities sorted from the smallest one.
 - `isEmpty(): bool` Is there any ImageSize?
 - `getWidest(): ImageSize` Get widest image size. Throws `RuntimeException` if list is empty.
 
@@ -120,6 +127,38 @@ $sizes2 = img_sizes([
 	1200 => 1100
 ], false);
 ```
+
+### Pixel densities
+
+The `sizes` attribute tells the browser how wide the image slot is in CSS pixels, `srcset` offers the files to choose from. On a display with DPR 2 the browser looks for a candidate twice as wide as the slot, so a `srcset` built from the declared widths only has nothing dense enough to offer in the widest breakpoint - above it the ladder simply ends.
+
+That's why every declared width is offered in all pixel densities of the list, `[1, 2]` by default, ie. each width and it's double:
+
+```php
+// Default [1, 2]: a 1100px wide slot is offered as both 1100w and 2200w
+$sizes = img_sizes([
+	0 => [400, 250],
+	1200 => 1100
+]);
+
+// Add 1.5x candidates for mid-DPR displays
+$sizes->setDensities([1, 1.5, 2]);
+
+// Opt out of retina candidates completely
+$sizes->setDensities([1]);
+
+// Densities can be set in the constructor as well
+$sizes = new ImageSizeList(true, null, null, [1, 2, 3]);
+```
+
+Candidates are:
+- **limited by the original image**, so nothing is upscaled - a 2048px wide original ends the ladder at 2048w even when the 2x candidate would be 2200w,
+- **deduplicated by the really returned width**, so densities clamped to the same width are offered just once,
+- **checked for the required aspect ratio** - a cropped candidate, which the resizer wasn't able to crop as required, is dropped instead of being offered with a different crop.
+
+The `sizes` attribute is not affected by densities at all, it always describes the slot width as declared.
+
+> Every density means one more image to resize and to store on the server. Keep the list short, `[1, 2]` covers the vast majority of displays.
 
 ---
 
@@ -174,7 +213,9 @@ If you want to use this configuration for all instances of BootstrapSizes, it's 
 - `__construct(int $columns, int $gutter, array $breakpoints, array $containers)` Instantiate with configuration. All arguments are `null` by default, which means they are set as default Bootstrap 5 grid (see [configuration above](#configuration)).
 - `col(string $breakpoint, int $cols, int $height = null, $crop = null, array $cloudinaryTransform = []): BootstrapSizes` Set how many $columns does the image takes on given $breakpoint. Arguments $height, $crop and $cloudinaryTransform are used in ImageSize object generated for this breakpoint. Supports chaining.
 - `container(string $breakpoint, int|null $width, bool $givenWithGutter = true): BootstrapSizes` Change container size for $breakpoint to $width in pixels given either with (default) or without gutter padding. Useful if image container is nested inside parent column or has non-standard width. Supports chaining.
-- `getSizes(): ImageSizeList` Get calculated ImageSizeList based on previously given cols.
+- `getSizes(int|null $maxWidth = null, int|null $maxHeight = null, float $hdRatio = 1): ImageSizeList` Get calculated ImageSizeList based on previously given cols. Arguments $maxWidth and $maxHeight are widths and heights, which won't be exceeded in any breakpoint. Argument $hdRatio multiplies all calculated dimensions, including the slot widths declared in the `sizes` attribute.
+
+> Keep $hdRatio at `1` unless you really want to declare larger slots than the layout has: retina candidates are offered by `srcset` [pixel densities](#pixel-densities) of the returned ImageSizeList.
 
 Since Bootstrap works with mobile-first breakpoints, calculated `ImageSizeList` will also be returned in mobile-first notation.
 

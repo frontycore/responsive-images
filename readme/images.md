@@ -160,6 +160,8 @@ echo $img->getImgLink(['class' => 'lightbox'], img_size(1920))
 
 Get or output responsive \<img\> tag with `sizes` and `srcset` arguments calculated by given ImageSizeList.
 
+The `sizes` attribute describes the slot width declared for each breakpoint, while `srcset` is built independently of it: every declared width is offered in all [pixel densities](./image-sizes.md#pixel-densities) of the ImageSizeList (`[1, 2]` by default), so retina displays have a dense enough candidate even in the widest breakpoint. Candidates are limited by the size of the original image, so nothing is upscaled.
+
 Attributes `width` and `height` will be set according to the widest image scale found in ImageSizeList.
 
 Attribute `alt` will be automatically filled with first non-empty field alt or title set in WP Media Library.
@@ -216,11 +218,16 @@ Output:
 		(min-width: 768px) 700px,
 		(min-width: 576px) 500px,
 		400px"
-	srcset="https://res.cloudinary.com/your-name/q_auto:eco,f_auto,w_1100,c_fit/your-project/2021/05/your-image.jpg 1100w,
-		https://res.cloudinary.com/your-name/q_auto:eco,f_auto,w_900,c_fit/your-project/2021/05/your-image.jpg 900w,
-		https://res.cloudinary.com/your-name/q_auto:eco,f_auto,w_700,c_fit/your-project/2021/05/your-image.jpg 700w,
+	srcset="https://res.cloudinary.com/your-name/q_auto:eco,f_auto,w_400,h_250,c_fill/your-project/2021/05/your-image.jpg 400w,
 		https://res.cloudinary.com/your-name/q_auto:eco,f_auto,w_500,c_fit/your-project/2021/05/your-image.jpg 500w,
-		https://res.cloudinary.com/your-name/q_auto:eco,f_auto,w_400,h_250,c_fill/your-project/2021/05/your-image.jpg 400w"
+		https://res.cloudinary.com/your-name/q_auto:eco,f_auto,w_700,c_fit/your-project/2021/05/your-image.jpg 700w,
+		https://res.cloudinary.com/your-name/q_auto:eco,f_auto,w_800,h_500,c_fill/your-project/2021/05/your-image.jpg 800w,
+		https://res.cloudinary.com/your-name/q_auto:eco,f_auto,w_900,c_fit/your-project/2021/05/your-image.jpg 900w,
+		https://res.cloudinary.com/your-name/q_auto:eco,f_auto,w_1000,c_fit/your-project/2021/05/your-image.jpg 1000w,
+		https://res.cloudinary.com/your-name/q_auto:eco,f_auto,w_1100,c_fit/your-project/2021/05/your-image.jpg 1100w,
+		https://res.cloudinary.com/your-name/q_auto:eco,f_auto,w_1400,c_fit/your-project/2021/05/your-image.jpg 1400w,
+		https://res.cloudinary.com/your-name/q_auto:eco,f_auto,w_1800,c_fit/your-project/2021/05/your-image.jpg 1800w,
+		https://res.cloudinary.com/your-name/q_auto:eco,f_auto,w_2200,c_fit/your-project/2021/05/your-image.jpg 2200w"
 	width="1100" height="619"
 	alt="My image"
 	class="img-fluid">

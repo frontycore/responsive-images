@@ -5,6 +5,7 @@ namespace Fronty\ResponsiveImages\Sizes;
 use Iterator;
 use ReflectionClass;
 use RuntimeException;
+use InvalidArgumentException;
 
 /**
  * List of image sizes appendaple in fluent interface.
@@ -21,6 +22,9 @@ class ImageSizeList implements Iterator
 	/** @var int|null */
 	private $maxHeight;
 
+	/** @var array|float[] Pixel densities (DPR), in which to offer every image width in srcset. */
+	private $densities = [1.0, 2.0];
+
 	/** @var array|ImageSize[] */
 	private $sizes = [];
 
@@ -34,12 +38,14 @@ class ImageSizeList implements Iterator
 	 * @param bool $mobileFirst Whether given breakpoints shoud be considered as minimal (true) or maximal (false) viewport widths.
 	 * @param int|null $maxWidth Maximal image with, which should not be exceeded in any breakpoint.
 	 * @param int|null $maxHeight Maximal image height, which should not be exceeded in any breakpoint.
+	 * @param array $densities Pixel densities (DPR), in which to offer every image width in srcset.
 	 */
-	public function __construct(bool $mobileFirst = true, ?int $maxWidth = null, ?int $maxHeight = null)
+	public function __construct(bool $mobileFirst = true, ?int $maxWidth = null, ?int $maxHeight = null, array $densities = [1, 2])
 	{
 		$this->mobileFirst = $mobileFirst;
 		$this->maxWidth = $maxWidth;
 		$this->maxHeight = $maxHeight;
+		$this->setDensities($densities);
 	}
 
 	/**
@@ -88,6 +94,36 @@ class ImageSizeList implements Iterator
 	}
 
 	/**
+	 * Set pixel densities (DPR), in which to offer every image width in the srcset attribute.
+	 * 	Eg. [1, 2] offers each declared width both as declared and in it's double for retina
+	 * 	displays. Candidates are limited by the original image size, so nothing is upscaled.
+	 * @param array $densities Positive multipliers of declared widths, eg. [1, 2] or [1, 1.5, 2].
+	 * @return static
+	 *
+	 * @throws InvalidArgumentException When no positive density is given.
+	 */
+	public function setDensities(array $densities): static
+	{
+		$densities = array_filter(array_map('floatval', $densities), fn(float $density): bool => $density > 0);
+		$densities = array_values(array_unique($densities));
+		if (count($densities) <= 0) {
+			throw new InvalidArgumentException("At least one positive pixel density has to be given.");
+		}
+		sort($densities);
+		$this->densities = $densities;
+		return $this;
+	}
+
+	/**
+	 * Get pixel densities (DPR), in which to offer every image width in the srcset attribute.
+	 * @return array|float[] Positive multipliers sorted from the smallest one.
+	 */
+	public function getDensities(): array
+	{
+		return $this->densities;
+	}
+
+	/**
 	 * Check if image list is empty.
 	 * @return bool
 	 */
@@ -104,7 +140,9 @@ class ImageSizeList implements Iterator
 	 */
 	public function getWidest(): ImageSize
 	{
-		assert(!$this->isEmpty(), new RuntimeException("List of ImageSizes is empty."));
+		if ($this->isEmpty()) {
+			throw new RuntimeException("List of ImageSizes is empty.");
+		}
 
 		$sizes = $this->sizes;
 		usort($sizes, function(ImageSize $a, ImageSize $b) {

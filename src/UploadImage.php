@@ -20,6 +20,9 @@ use enshrined\svgSanitize\Sanitizer;
  */
 class UploadImage extends BaseImage
 {
+	/** @var float Maximal relative difference between the required and the returned aspect ratio. */
+	private const RATIO_TOLERANCE = 0.02;
+
 	/** @var int */
 	private $ID;
 
@@ -283,12 +286,20 @@ class UploadImage extends BaseImage
 
 	/**
 	 * Create arrays of `srcset` and `sizes` HTML attributes for img tag.
+	 * 	While `sizes` describes the slot width declared for each breakpoint, `srcset` is built
+	 * 	independently of it: every declared width is offered in all pixel densities set in the
+	 * 	ImageSizeList, so even the widest breakpoint has a dense enough candidate on retina
+	 * 	displays. Candidates are deduplicated by the really returned width.
 	 * @param ImageSizeList $imageSizes
 	 * @return ArrayHash
+	 *
+	 * @see ImageSizeList::setDensities()
 	 */
 	private function createSrcsetSizes(ImageSizeList $imageSizes): ArrayHash
 	{
 		$sizes = $srcsets = [];
+		$original = $this->getOriginalSize();
+
 		foreach ($imageSizes as $viewport => $size) {
 			$src = $this->getSizedSrc($size);
 			if (!$src) continue;
@@ -299,13 +310,86 @@ class UploadImage extends BaseImage
 				$media = ($imageSizes->isMobileFirst()) ? 'min-width' : 'max-width';
 				$sizes[] = sprintf('(%s: %dpx) %dpx', $media, $viewport, $src[1]);
 			}
-			$srcsets[] = esc_url_raw($src[0]) . ' ' . $src[1] . 'w';
+
+			foreach ($imageSizes->getDensities() as $density) {
+				// The 1x candidate is the declared size, already resolved for the `sizes` attribute
+				$candidate = ($density === 1.0) ? $src : $this->getDensitySrc($size, $density, $original);
+				if (!$candidate || !isset($candidate[1])) continue;
+
+				// Keep the first candidate of each width, eg. densities clamped to the same original width
+				$width = intval($candidate[1]);
+				if ($width <= 0 || isset($srcsets[$width])) continue;
+				$srcsets[$width] = esc_url_raw($candidate[0]) . ' ' . $width . 'w';
+			}
 		}
 
+		ksort($srcsets);
 		return ArrayHash::from([
 			'sizes' => $sizes,
-			'srcsets' => $srcsets
+			'srcsets' => array_values($srcsets)
 		], false);
+	}
+
+	/**
+	 * Get image URL, width and height for given ImageSize multiplied by pixel density.
+	 * 	The required size is clamped to the original image size before the resizer is asked,
+	 * 	so nothing is upscaled: asked for a size larger than the original,
+	 * 	bis_get_attachment_image_src() returns the untouched original, ie. an image of
+	 * 	a different aspect ratio than the required crop.
+	 * @param ImageSize $size Size declared for a breakpoint, ie. in 1x density.
+	 * @param float $density Pixel density (DPR) to multiply the size with.
+	 * @param array|null $original Size of the original image, null when it is unknown.
+	 * @return array|null [0 => URL, 1 => image width, 2 => image height],
+	 * 	null when the resizer didn't return the required aspect ratio.
+	 *
+	 * @see static::getSizedSrc()
+	 */
+	private function getDensitySrc(ImageSize $size, float $density, ?array $original): ?array
+	{
+		$required = $size->getScaled($this->getDensityScale($size, $density, $original));
+		$src = $this->getSizedSrc($required);
+		if (!$src || !isset($src[1], $src[2])) return null;
+		if (!$this->hasRequiredRatio($required, intval($src[1]), intval($src[2]))) return null;
+		return $src;
+	}
+
+	/**
+	 * Get scale of the declared size, which doesn't exceed the original image size.
+	 * @param ImageSize $size Size declared for a breakpoint, ie. in 1x density.
+	 * @param float $density Required pixel density (DPR).
+	 * @param array|null $original Size of the original image, null when it is unknown.
+	 * @return float The density itself when the scaled size still fits into the original image.
+	 */
+	private function getDensityScale(ImageSize $size, float $density, ?array $original): float
+	{
+		$width = $size->getWidth();
+		$height = $size->getHeight();
+		if ($original === null || $width <= 0 || $original[0] <= 0 || $original[1] <= 0) return $density;
+
+		$scale = min($density, $original[0] / $width);
+		// Cropped sizes are limited by the original height as well to keep the required ratio
+		if ($height !== null && $height > 0 && $size->hasCrop()) {
+			$scale = min($scale, $original[1] / $height);
+		}
+		return $scale;
+	}
+
+	/**
+	 * Check whether the resizer returned an image in the aspect ratio of the required size.
+	 * 	Uncropped (fit) sizes always pass, as their ratio is given by the original image.
+	 * @param ImageSize $size Required size.
+	 * @param int $width Returned image width.
+	 * @param int $height Returned image height.
+	 * @return bool
+	 */
+	private function hasRequiredRatio(ImageSize $size, int $width, int $height): bool
+	{
+		$requiredHeight = $size->getHeight();
+		if ($requiredHeight === null || !$size->hasCrop()) return true;
+		if ($size->getWidth() <= 0 || $requiredHeight <= 0 || $width <= 0 || $height <= 0) return false;
+
+		$required = $requiredHeight / $size->getWidth();
+		return (abs($height / $width - $required) <= self::RATIO_TOLERANCE * $required);
 	}
 
 	/**
