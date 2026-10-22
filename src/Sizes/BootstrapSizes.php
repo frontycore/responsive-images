@@ -81,12 +81,18 @@ class BootstrapSizes
 	 * @param array $cloudinaryTransform
 	 * @return static
 	 *
+	 * @throws InvalidArgumentException When the breakpoint doesn't exist or too many columns are taken.
+	 *
 	 * @see ImageSize::__construct()
 	 */
 	public function col(string $breakpoint, int $cols, ?int $height = null, $crop = null, array $cloudinaryTransform = [])
 	{
-		assert(isset($this->breakpoints[$breakpoint]), new InvalidArgumentException("Breakpoint '$breakpoint' doesn't exist."));
-		assert($cols <= $this->columns, new InvalidArgumentException("Number of columns taken has to be lower thank or equal to total columns of {$this->columns}, {$cols} given."));
+		if (!isset($this->breakpoints[$breakpoint])) {
+			throw new InvalidArgumentException("Breakpoint '$breakpoint' doesn't exist.");
+		}
+		if ($cols > $this->columns) {
+			throw new InvalidArgumentException("Number of columns taken has to be lower than or equal to total columns of {$this->columns}, {$cols} given.");
+		}
 		$this->cols[$breakpoint] = $this->getColData($cols, $height, $crop, $cloudinaryTransform);
 		return $this;
 	}
@@ -99,10 +105,14 @@ class BootstrapSizes
 	 * @param int|null $width Null for 100% wide container
 	 * @param bool $givenWithGutter
 	 * @return static
+	 *
+	 * @throws InvalidArgumentException When the breakpoint doesn't exist.
 	 */
 	public function container(string $breakpoint, ?int $width, bool $givenWithGutter = true)
 	{
-		assert(isset($this->breakpoints[$breakpoint]), new InvalidArgumentException("Breakpoint '$breakpoint' doesn't exist."));
+		if (!isset($this->breakpoints[$breakpoint])) {
+			throw new InvalidArgumentException("Breakpoint '$breakpoint' doesn't exist.");
+		}
 		if ($width !== null && !$givenWithGutter) $width += $this->gutter;
 		$this->containers[$breakpoint] = $width;
 		return $this;

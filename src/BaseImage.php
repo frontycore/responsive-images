@@ -102,7 +102,9 @@ abstract class BaseImage
 	 */
 	public function getInlineSvg(): string
 	{
-		assert($this->isSvg(), new LogicException("Image '{$this->getUrl()}' is not SVG."));
+		if (!$this->isSvg()) {
+			throw new LogicException("Image '{$this->getUrl()}' is not SVG.");
+		}
 		$svg = file_get_contents($this->getPath());
 		return $this->svgUniqueClasses($svg);
 	}
