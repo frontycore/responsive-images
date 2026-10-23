@@ -76,8 +76,9 @@ abstract class BaseImage
 			return (count($dim) === 2) ? $dim : null;
 		}
 
+		// getimagesize() returns the type and the mime type along with the dimensions.
 		$dim = getimagesize($path);
-		return (is_array($dim) && count($dim) === 2) ? $dim : null;
+		return (is_array($dim) && count($dim) >= 2) ? [intval($dim[0]), intval($dim[1])] : null;
 	}
 
 	/**
