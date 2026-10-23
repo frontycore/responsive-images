@@ -733,16 +733,19 @@ class UploadImage extends BaseImage
 
 		$imgStyle = strval($img->getAttribute('style'));
 
+		// An attribute copied from the block is nulled when empty, because Html renders
+		// an empty string as an empty attribute, eg. id="". The `alt` below is the exception:
+		// an empty alt is the correct markup of a decorative image, leaving it out is not.
 		$fig = Html::el('figure', [
 			'class' => $class,
-			'id' => $figure->getAttribute('id')
+			'id' => $figure->getAttribute('id') ?: null
 		]);
 		if ($link instanceof DOMElement) {
 			$imgParent = Html::el('a', [
-				'class' => $link->getAttribute('class'),
+				'class' => $link->getAttribute('class') ?: null,
 				'href' => $link->getAttribute('href'),
-				'target' => $link->getAttribute('target'),
-				'rel' => $link->getAttribute('rel')
+				'target' => $link->getAttribute('target') ?: null,
+				'rel' => $link->getAttribute('rel') ?: null
 			]);
 			$fig->addHtml($imgParent);
 		} else {
@@ -759,10 +762,10 @@ class UploadImage extends BaseImage
 		}
 
 		$imgAttrs = [
-			'class' => $img->getAttribute('class'),
-			'id' => $img->getAttribute('id'),
+			'class' => $img->getAttribute('class') ?: null,
+			'id' => $img->getAttribute('id') ?: null,
 			'alt' => $img->getAttribute('alt'),
-			'title' => $img->getAttribute('title')
+			'title' => $img->getAttribute('title') ?: null
 		];
 		if ($imgStyle) $imgAttrs['style'] = $imgStyle;
 
