@@ -160,6 +160,18 @@ Candidates are:
 
 The `sizes` attribute is not affected by densities at all, it always describes the slot width as declared - a smaller file doesn't make the slot narrower.
 
+Neighbouring slots of the same width are collapsed into one, because the second one only repeats what the condition of the first one already said. Of such a series the **last** member is kept: the browser takes the first slot whose condition matches and the last member is the most permissive one - the lowest `min-width` in mobile-first notation, the highest `max-width` in desktop-first - so it covers the whole range the whole series covered. Six breakpoints which declare the same width three times in a row:
+
+```html
+<!-- Declared -->
+sizes="(min-width: 1400px) 656px, (min-width: 1200px) 656px, (min-width: 992px) 656px, (min-width: 768px) 656px, (min-width: 576px) 516px, 551px"
+
+<!-- Rendered -->
+sizes="(min-width: 768px) 656px, (min-width: 576px) 516px, 551px"
+```
+
+Only neighbours are collapsed, so a width which returns after a different one in between is written again - it describes a different range. The saving is worth the trouble mainly in a [`<picture>` tag](./images.md#getresponsivepicturetag-and-responsivepicturetag), where the same `sizes` attribute is repeated on every `<source>`.
+
 > Every density means one more image to resize and to store on the server. Keep the list short, `[1, 2]` covers the vast majority of displays.
 
 ### Image formats

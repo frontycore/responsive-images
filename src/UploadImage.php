@@ -452,6 +452,8 @@ class UploadImage extends BaseImage
 	 * 	`srcset` is built independently of it: every declared width is offered in all pixel
 	 * 	densities set in the ImageSizeList, so even the widest breakpoint has a dense enough
 	 * 	candidate on retina displays.
+	 * 	Neighbouring slots of the same width are collapsed into one, which says the very same
+	 * 	thing in fewer bytes - and `sizes` is repeated on every <source> of a <picture> tag.
 	 * @param ImageSizeList $imageSizes
 	 * @param array|null $original Size of the original image, null when it is unknown.
 	 * @return ArrayHash sizes - slots of the `sizes` attribute, srcsets - candidates of the
@@ -463,14 +465,25 @@ class UploadImage extends BaseImage
 	{
 		$sizes = $slots = $candidates = [];
 
+		$previousWidth = null;
 		foreach ($imageSizes as $viewport => $size) {
 			$slots[] = $size;
+			$width = $size->getWidth();
 			if ($imageSizes->isLast()) {
-				$sizes[] = $size->getWidth() . 'px';
+				$slot = $width . 'px';
 			} else {
 				$media = ($imageSizes->isMobileFirst()) ? 'min-width' : 'max-width';
-				$sizes[] = sprintf('(%s: %dpx) %dpx', $media, $viewport, $size->getWidth());
+				$slot = sprintf('(%s: %dpx) %dpx', $media, $viewport, $width);
 			}
+
+			// A slot as wide as its predecessor only repeats what the previous condition
+			// already said, so a series of equal widths is collapsed into its last member.
+			// The browser takes the first matching slot and the last member of the series is
+			// the most permissive one - the lowest `min-width` when mobile first, the highest
+			// `max-width` otherwise - so it covers the whole range the series covered.
+			if ($width === $previousWidth) array_pop($sizes);
+			$sizes[] = $slot;
+			$previousWidth = $width;
 		}
 
 		// A flat srcset can't hold two files of the same `w` descriptor, so candidates are

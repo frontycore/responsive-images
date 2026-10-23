@@ -33,7 +33,7 @@ Both ThemeImage and UploadImage objects allows you to change some of their outpu
 	- `UploadImage $image` The image object itself
 
 - **`fri_upload_responsive_img_sizes`** Change parts of the `sizes` attribute before they are joined by `, `. Used in *getResponsiveImgTag()* and *responsiveImgTag()* methods. Arguments:
-	- `array $sizes` Declared slot widths with their media conditions in the order they are written to the attribute, eg. `['(min-width: 1200px) 1100px', …, '400px']`
+	- `array $sizes` Declared slot widths with their media conditions in the order they are written to the attribute, eg. `['(min-width: 1200px) 1100px', …, '400px']`. A series of neighbouring slots of the same width is already collapsed into its last member.
 	- `UploadImage $image` The image object itself
 
 - **`fri_upload_responsive_img_srcset`** Change `srcset` candidates before they are joined by `, `. Used in *getResponsiveImgTag()* and *responsiveImgTag()* methods. Arguments:
