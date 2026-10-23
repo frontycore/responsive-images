@@ -64,6 +64,8 @@ Both ThemeImage and UploadImage objects allows you to change some of their outpu
 
 	> This filter runs **before** the decision whether to render the \<picture\> wrapper at all, so a source added here brings the wrapper back. Returning an empty array removes it.
 
+	> **Changed in 1.1.0:** the second argument used to be an `ImageSizeList` always. A callback which declares the type of that parameter has to accept `ImageSize` as well, otherwise it throws a `TypeError` on the single size methods. The same holds for `fri_upload_picture_tag` below.
+
 	> **This is the hook a lazyloader needs.** Inside \<picture\> the `srcset` of a \<source\> wins over the \<img\>, so a lazyloader which rewrites the \<img\> attributes only is silently bypassed and the browser loads every source immediately.
 
 - **`fri_upload_picture_tag`** Change output of \<picture\> tag. Used in the same methods as `fri_upload_format_src`. **Not called when no \<source\> is offered**, because no \<picture\> is rendered then - hook `fri_upload_img_tag` or `fri_upload_responsive_img_tag` for the \<img\> which is returned instead. Arguments:

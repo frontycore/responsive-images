@@ -187,9 +187,12 @@ class UploadImage extends BaseImage
 		$img = $this->getImgTag($size, $attrs);
 
 		// A single candidate with no `sizes` attribute needs no `w` descriptor at all: there is
-		// nothing for the browser to choose from. The URL is read back from the <img>, so the
-		// sources offer exactly what it ended up with, and the resizer is asked just once.
-		$src = strval($img->src);
+		// nothing for the browser to choose from.
+		// The candidate is asked from the resizer rather than read back from the <img>, because
+		// the `fri_upload_img_tag` filter may have rewritten the `src` - a lazyloader which
+		// moves it to `data-src` would leave no URL to offer the formats for at all. This way
+		// the filters get the raw URL, exactly as the responsive path hands them its candidates.
+		$src = strval($this->getSizedSrc($size)[0]);
 		$candidates = ($src !== '') ? [[$src, 0]] : [];
 
 		$sources = $this->createPictureSources($size, $candidates, '', $formats);
@@ -322,16 +325,20 @@ class UploadImage extends BaseImage
 	 * 	alternative formats, the same logo uploaded as PNG has.
 	 * 	The sources filter runs before that decision, so a project can add a source of its own
 	 * 	and still get the wrapper.
+	 * 	Attributes given for the <picture> keep the wrapper as well, even with nothing to choose
+	 * 	from: a template which styles the wrapper means it, and dropping those attributes
+	 * 	silently would bring the very markup variance this rule removes back one level up.
 	 * @param Html $img
 	 * @param array|Html[] $sources
 	 * @param ImageSize|ImageSizeList $sizes The size or the list given to the calling method.
 	 * @param array $pictureAttrs Attributes of the <picture> tag.
-	 * @return Html The <picture> tag, or the given <img> when no source is offered.
+	 * @return Html The <picture> tag, or the given <img> when neither a source nor an attribute
+	 * 	of the <picture> is given.
 	 */
 	private function wrapInPicture(Html $img, array $sources, ImageSize|ImageSizeList $sizes, array $pictureAttrs): Html
 	{
 		$sources = apply_filters('fri_upload_picture_sources', $sources, $sizes, $this);
-		if (count($sources) <= 0) return $img;
+		if (count($sources) <= 0 && count($pictureAttrs) <= 0) return $img;
 
 		$el = Html::el('picture', $pictureAttrs);
 		foreach ($sources as $source) {

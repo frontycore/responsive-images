@@ -257,11 +257,11 @@ Get or output \<picture\> tag, which offers the image in the [formats](./image-s
 
 **This library converts nothing.** Every \<source\> is built from files your project confirms through the `fri_upload_format_src` filter. A format is offered only when **all** candidates of the `srcset` are confirmed in it, so the browser never gets a sparser ladder in the format it prefers.
 
-**When no format is confirmed, the method returns the very same \<img\> as `getResponsiveImgTag()`, with no \<picture\> wrapper around it.** A picture with nothing to choose from would only add a level to the DOM, and a template would have to style two structures for one slot: a logo uploaded as SVG has no alternative formats, the same logo uploaded as PNG has. Write the CSS for both depths, eg. `.ratio > img, .ratio > picture > img`.
+**When no format is confirmed and no `$pictureAttrs` are given, the method returns the very same \<img\> as `getResponsiveImgTag()`, with no \<picture\> wrapper around it.** A picture with nothing to choose from would only add a level to the DOM, and a template would have to style two structures for one slot: a logo uploaded as SVG has no alternative formats, the same logo uploaded as PNG has. Write the CSS for both depths, eg. `.ratio > img, .ratio > picture > img`.
 
 - `@param ImageSizeList $sizes` Sizes of the responsive image. See [ImageSizeList docs](./image-sizes.md#imagesizelist-object).
 - `@param array $attrs = []` HTML attributes of the \<img\> tag.
-- `@param array $pictureAttrs = []` HTML attributes of the \<picture\> tag.
+- `@param array $pictureAttrs = []` HTML attributes of the \<picture\> tag. Any attribute given here keeps the \<picture\> wrapper even when no format is confirmed, so attributes are never dropped silently - leave it empty when you want the collapse.
 - `@return Html` [Html object](https://doc.nette.org/en/3.0/html-elements) of \<picture\> with \<source\> and \<img\> children, or of the \<img\> alone when no format is confirmed.
 
 > Uses `fri_upload_formats`, `fri_upload_format_src`, `fri_upload_picture_sources` and `fri_upload_picture_tag` filters, besides all the filters of `getResponsiveImgTag()`. See [more about WP filters](./wp-filters.md).
@@ -333,7 +333,7 @@ The \<img\> inside is the very same tag `getImgTag()` returns, including it's `f
 
 - `@param ImageSize $size` Size of the image. See [ImageSize docs](./image-sizes.md#imagesize-object).
 - `@param array $attrs = []` HTML attributes of the \<img\> tag.
-- `@param array $pictureAttrs = []` HTML attributes of the \<picture\> tag.
+- `@param array $pictureAttrs = []` HTML attributes of the \<picture\> tag. Any attribute given here keeps the \<picture\> wrapper even when no format is confirmed, so attributes are never dropped silently - leave it empty when you want the collapse.
 - `@param array|null $formats = null` Image MIME types in order of preference. `null` asks the `fri_upload_formats` filter for the project default, an empty array switches the formats off for this single call.
 - `@return Html` [Html object](https://doc.nette.org/en/3.0/html-elements) of \<picture\>, or of the \<img\> alone when no format is confirmed.
 
