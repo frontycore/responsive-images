@@ -84,6 +84,6 @@ Both ThemeImage and UploadImage objects allows you to change some of their outpu
 
 ## Shared action
 
-- **`fri_image_issue`** Fires when an image problem would otherwise leave the output silently empty or broken - an unreadable SVG file, an SVG rejected by the sanitizer or a `core/image` block which holds no image to replace. Hook it to report the problem elsewhere, eg. to a monitoring service. The message is triggered as `E_USER_WARNING` when `WP_DEBUG` is on and passed to `error_log()` otherwise, so it is never lost. Arguments:
+- **`fri_image_issue`** Fires when an image problem would otherwise leave the output silently empty or broken - a missing or unreadable SVG file, an SVG rejected by the sanitizer or a `core/image` block which holds no image to replace. Hook it to report the problem elsewhere, eg. to a monitoring service. The message is triggered as `E_USER_WARNING` when `WP_DEBUG` is on and passed to `error_log()` otherwise, so it is never lost. Arguments:
 	- `string $message` Reason of the issue including the class name and the file path or URL.
 	- `BaseImage $image` The image object, which reported the issue.

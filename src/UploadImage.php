@@ -75,7 +75,7 @@ class UploadImage extends BaseImage
 	 */
 	public function getPath(): string
 	{
-		return get_attached_file($this->ID);
+		return strval(get_attached_file($this->ID));
 	}
 
 	/**

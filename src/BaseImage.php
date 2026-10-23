@@ -21,7 +21,7 @@ abstract class BaseImage
 
 	/**
 	 * Get absolute path of original image.
-	 * @return string
+	 * @return string Empty string when the image has no file, eg. for an attachment ID whose file is gone.
 	 */
 	abstract public function getPath(): string;
 
@@ -60,15 +60,23 @@ abstract class BaseImage
 	 */
 	public function getOriginalSize(): ?array
 	{
+		// The file is read here, so its absence has to be handled: an attachment ID outlives its file
+		// and both getimagesize() and simplexml_load_file() are fatal on an empty path.
+		// An unknown size is a documented outcome handled by the callers, so it is not reported.
+		$path = $this->getPath();
+		if ($path === '' || !is_file($path)) return null;
+
 		if ($this->isSvg()) {
-			$xml = simplexml_load_file($this->getPath());
+			$xml = simplexml_load_file($path);
+			if ($xml === false) return null;
 			$dim = array_filter([
 				intval($xml->attributes()->width),
 				intval($xml->attributes()->height),
 			], fn(int $val): bool => $val > 0);
 			return (count($dim) === 2) ? $dim : null;
 		}
-		$dim = getimagesize($this->getPath());
+
+		$dim = getimagesize($path);
 		return (is_array($dim) && count($dim) === 2) ? $dim : null;
 	}
 
@@ -107,9 +115,14 @@ abstract class BaseImage
 		if (!$this->isSvg()) {
 			throw new LogicException("Image '{$this->getUrl()}' is not SVG.");
 		}
-		$svg = file_get_contents($this->getPath());
+		$path = $this->getPath();
+		if ($path === '' || !is_file($path)) {
+			$this->reportIssue("SVG file of '{$this->getUrl()}' doesn't exist.");
+			return '';
+		}
+		$svg = file_get_contents($path);
 		if ($svg === false) {
-			$this->reportIssue("SVG file '{$this->getPath()}' couldn't be read.");
+			$this->reportIssue("SVG file '$path' couldn't be read.");
 			return '';
 		}
 		return $this->svgUniqueClasses($svg);

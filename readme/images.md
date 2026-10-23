@@ -34,6 +34,18 @@ Returns fully qualified URL or absolute path of image original size. In context 
 
 - `@return string` Fully qualified URL or path of the image on local server.
 
+> An attachment ID outlives its file: content copied between installations carries IDs which mean nothing on the target site, an option can hold the ID of a long deleted logo. Both methods return an **empty string** in that case, so check the image with [`hasImage()`](#hasimage) before you use the result for anything but output.
+
+### `getOriginalSize()` and `getOriginalRatio()`
+
+Returns dimensions of the original image, or its aspect ratio in percent. `UploadImage` reads them from the DB and falls back to the file, `ThemeImage` always reads the file.
+
+- `@param int $precision = 2` *(getOriginalRatio only)* Number of decimal places to round the ratio to.
+- `@return array|null` `[0 => int width, 1 => int height]`, **null when the size can't be told** - the file is missing, unreadable, or an SVG without both the `width` and the `height` attribute.
+- `@return float|null` *(getOriginalRatio)* `height / width * 100`, null when the size can't be told.
+
+> The size of the original limits the `srcset` candidates, so an unknown size is a supported state, not an error: the library simply offers every declared width without clamping it. Nothing is logged.
+
 ### `getImgTag()` and `imgTag()`
 
 Returns or output non-responsive \<img\> HTML tag. Useful also for SVG in \<img\> tags.
@@ -102,9 +114,22 @@ $img = new UploadImage($attachment_id);
 $img = img_upload($attachment_id);
 ```
 
-### `isSvg()`, `getPathinfo()`, `getUrl()`, `getPath()`, `getInlineSvg()`, `inlineSvg()`, `getImgTag()` and `imgTag()`
+### `isSvg()`, `getPathinfo()`, `getUrl()`, `getPath()`, `getOriginalSize()`, `getOriginalRatio()`, `getInlineSvg()`, `inlineSvg()`, `getImgTag()` and `imgTag()`
 
 These methods is documented in [Shared methods above](#shared-methods).
+
+### `hasImage()`
+
+Checks that the attachment ID still has an image behind it. Use it as a gate in templates where the ID comes from stored content or from an option, both of which outlive the file.
+
+- `@return bool` False when the attachment doesn't exist, isn't an image, or its file is gone.
+
+```php
+$img = img_upload(get_field('logo'));
+if ($img->hasImage()) $img->pictureTag(img_size(240));
+```
+
+> Without the gate nothing fatal happens - the tag is rendered with an empty `src`. Only `getInlineSvg()` reports the problem through [`fri_image_issue`](./wp-filters.md), because it would otherwise return nothing at all.
 
 ### `getAlt()`
 
@@ -483,7 +508,7 @@ $img = new ThemeImage('images/image.jpg');
 $img = img_theme('images/logo.svg');
 ```
 
-### `isSvg()`, `getPathinfo()`, `getUrl()`, `getPath()`, `getInlineSvg()`, `inlineSvg()`, `getImgTag()` and `imgTag()`
+### `isSvg()`, `getPathinfo()`, `getUrl()`, `getPath()`, `getOriginalSize()`, `getOriginalRatio()`, `getInlineSvg()`, `inlineSvg()`, `getImgTag()` and `imgTag()`
 
 These methods is documented in [Shared methods above](#shared-methods).
 
