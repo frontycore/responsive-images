@@ -25,8 +25,9 @@ class ImageSizeList implements Iterator
 	/** @var array|float[] Pixel densities (DPR), in which to offer every image width in srcset. */
 	private $densities = [1.0, 2.0];
 
-	/** @var array|string[] Image formats (MIME types) to offer as <picture> sources, in order of preference. */
-	private $formats = [];
+	/** @var array|string[]|null Image formats (MIME types) to offer as <picture> sources, in order
+	 * 	of preference. Null means nothing is set here, so the `fri_upload_formats` filter decides. */
+	private $formats = null;
 
 	/** @var array|ImageSize[] */
 	private $sizes = [];
@@ -133,7 +134,8 @@ class ImageSizeList implements Iterator
 	 * 	This library generates no derivative: a source is rendered only for a format whose
 	 * 	files are confirmed by the `fri_upload_format_src` filter.
 	 * @param array $formats Image MIME types in order of preference, eg. ['image/avif', 'image/webp'].
-	 * 	Empty array (default) means no sources at all.
+	 * 	An empty array switches the formats off for this list, including the project default
+	 * 	of the `fri_upload_formats` filter, which is asked only when nothing is set here.
 	 * @return static
 	 *
 	 * @throws InvalidArgumentException When a value is not an image MIME type.
@@ -153,10 +155,25 @@ class ImageSizeList implements Iterator
 	/**
 	 * Get image formats, in which to offer the image as <picture> sources.
 	 * @return array|string[] Image MIME types in order of preference, empty array when none is set.
+	 *
+	 * @see static::hasFormats() To tell an empty list from a list which was never set.
 	 */
 	public function getFormats(): array
 	{
-		return $this->formats;
+		return $this->formats ?? [];
+	}
+
+	/**
+	 * Check whether image formats were set on this list at all.
+	 * 	Tells an explicit `setFormats([])`, ie. no formats wanted here, from a list which was
+	 * 	never asked about formats and leaves the decision to the `fri_upload_formats` filter.
+	 * @return bool
+	 *
+	 * @see static::setFormats()
+	 */
+	public function hasFormats(): bool
+	{
+		return $this->formats !== null;
 	}
 
 	/**

@@ -84,8 +84,9 @@ ImageSizeList represents a group of ImageSize objects related to breakpoints. Im
 - `isMobileFirst(): bool` Is mobile-first notation active?
 - `setDensities(array $densities): ImageSizeList` Set pixel densities, in which to offer every declared width in `srcset`. Supports chaining. Throws `InvalidArgumentException` if no positive density is given. See [Pixel densities](#pixel-densities).
 - `getDensities(): array` Get pixel densities sorted from the smallest one.
-- `setFormats(array $formats): ImageSizeList` Set image formats (MIME types), in which to offer the image as \<picture\> sources. Supports chaining. Throws `InvalidArgumentException` if a value is not an image MIME type. See [Image formats](#image-formats).
+- `setFormats(array $formats): ImageSizeList` Set image formats (MIME types), in which to offer the image as \<picture\> sources. An empty array switches the formats off for this list, including the project default of the `fri_upload_formats` filter. Supports chaining. Throws `InvalidArgumentException` if a value is not an image MIME type. See [Image formats](#image-formats).
 - `getFormats(): array` Get image formats in the order of preference, empty array when none is set.
+- `hasFormats(): bool` Whether formats were set on this list at all. Tells an explicit `setFormats([])`, ie. no formats wanted here, from a list which was never asked and leaves the decision to the `fri_upload_formats` filter.
 - `isEmpty(): bool` Is there any ImageSize?
 - `getWidest(): ImageSize` Get widest image size. Throws `RuntimeException` if list is empty.
 
@@ -191,7 +192,21 @@ img_upload($attachment_id)->responsivePictureTag($sizes);
 img_upload($attachment_id)->responsiveImgTag($sizes);
 ```
 
-**This library converts nothing.** It only offers the files your project confirms through the [`fri_upload_format_src`](./wp-filters.md#uploadimage-filters) filter, so without that filter no source is rendered at all. See [getResponsivePictureTag()](./images.md#getresponsivepicturetag-and-responsivepicturetag) for the whole picture, including ready-made filters for the usual converter layouts.
+Setting the formats on every single list gets tedious, so they usually belong to the project instead of to the call. The [`fri_upload_formats`](./wp-filters.md#uploadimage-filters) filter is asked for the default whenever a list was never told about formats:
+
+```php
+// Once, in your setup file - every picture method now offers both formats
+add_filter('fri_upload_formats', fn(): array => ['image/avif', 'image/webp']);
+```
+
+What is set explicitly always wins over that default, and an empty array is the way to switch the formats off:
+
+```php
+$sizes->setFormats([]);                       // No formats for this list, don't ask the filter
+img_upload($id)->pictureTag($size, [], [], []); // The same for a single call
+```
+
+**This library converts nothing.** It only offers the files your project confirms through the [`fri_upload_format_src`](./wp-filters.md#uploadimage-filters) filter, so without that filter no source is rendered at all - and **no \<picture\> either**, the picture methods then return the plain \<img\>. See [getResponsivePictureTag()](./images.md#getresponsivepicturetag-and-responsivepicturetag) for the whole picture, including ready-made filters for the usual converter layouts, or [getPictureTag()](./images.md#getpicturetag-and-picturetag) for images which need one size only.
 
 > The order matters, the browser takes the first source it supports - put the most efficient format first.
 > Formats are ignored for SVG and with [Auto Cloudinary](https://wordpress.org/plugins/auto-cloudinary/), which negotiates the format itself by it's `fetch_format` transformation.

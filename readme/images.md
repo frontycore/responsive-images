@@ -255,16 +255,16 @@ Output:
 
 Get or output \<picture\> tag, which offers the image in the [formats](./image-sizes.md#image-formats) set on the ImageSizeList - typically AVIF and WebP - with the responsive \<img\> of `getResponsiveImgTag()` as the fallback.
 
-**This library converts nothing.** Every \<source\> is built from files your project confirms through the `fri_upload_format_src` filter, so without that filter the tag holds the very same \<img\> as `getResponsiveImgTag()` returns. A format is offered only when **all** candidates of the `srcset` are confirmed in it, so the browser never gets a sparser ladder in the format it prefers.
+**This library converts nothing.** Every \<source\> is built from files your project confirms through the `fri_upload_format_src` filter. A format is offered only when **all** candidates of the `srcset` are confirmed in it, so the browser never gets a sparser ladder in the format it prefers.
 
-The \<picture\> element is rendered always, even without any format, so your CSS has one stable structure to target.
+**When no format is confirmed, the method returns the very same \<img\> as `getResponsiveImgTag()`, with no \<picture\> wrapper around it.** A picture with nothing to choose from would only add a level to the DOM, and a template would have to style two structures for one slot: a logo uploaded as SVG has no alternative formats, the same logo uploaded as PNG has. Write the CSS for both depths, eg. `.ratio > img, .ratio > picture > img`.
 
 - `@param ImageSizeList $sizes` Sizes of the responsive image. See [ImageSizeList docs](./image-sizes.md#imagesizelist-object).
 - `@param array $attrs = []` HTML attributes of the \<img\> tag.
 - `@param array $pictureAttrs = []` HTML attributes of the \<picture\> tag.
-- `@return Html` [Html object](https://doc.nette.org/en/3.0/html-elements) of \<picture\> with \<source\> and \<img\> children.
+- `@return Html` [Html object](https://doc.nette.org/en/3.0/html-elements) of \<picture\> with \<source\> and \<img\> children, or of the \<img\> alone when no format is confirmed.
 
-> Uses `fri_upload_format_src`, `fri_upload_picture_sources` and `fri_upload_picture_tag` filters, besides all the filters of `getResponsiveImgTag()`. See [more about WP filters](./wp-filters.md).
+> Uses `fri_upload_formats`, `fri_upload_format_src`, `fri_upload_picture_sources` and `fri_upload_picture_tag` filters, besides all the filters of `getResponsiveImgTag()`. See [more about WP filters](./wp-filters.md).
 
 Example:
 ```php
@@ -324,6 +324,48 @@ add_filter('fri_upload_format_src', function (?string $src, string $url, ?string
 > **Lazyloaders have to rewrite the sources as well.** Inside \<picture\> the `srcset` of a \<source\> wins over the \<img\>, so a lazyloader which rewrites the \<img\> attributes only is silently bypassed and the browser loads every source immediately. Hook `fri_upload_picture_sources` for that.
 > **Don't preload a \<picture\>.** A `<link rel="preload">` per format would be downloaded by every browser which supports more than one of them, as nothing makes the browser pick just one of several preloads. Preload scanners read \<picture\> on their own anyway, see [responsivePreloadLink()](#responsivepreloadlink).
 > Formats are ignored for SVG and with [Auto Cloudinary](https://wordpress.org/plugins/auto-cloudinary/), which negotiates the format itself.
+
+### `getPictureTag()` and `pictureTag()`
+
+Get or output \<picture\> tag for an image which needs **one size only** - a logo, an avatar, a fixed teaser - where a responsive `srcset` has nothing to offer, but AVIF or WebP still have.
+
+The \<img\> inside is the very same tag `getImgTag()` returns, including it's `fri_upload_img_tag` filter, and the whole \<picture\> collapses to it when no format is confirmed. Switching a template from `imgTag()` to `pictureTag()` therefore changes the markup only where the converted files really exist - an SVG logo, a hotlinked image or a site with the formats switched off keeps the markup it has today.
+
+- `@param ImageSize $size` Size of the image. See [ImageSize docs](./image-sizes.md#imagesize-object).
+- `@param array $attrs = []` HTML attributes of the \<img\> tag.
+- `@param array $pictureAttrs = []` HTML attributes of the \<picture\> tag.
+- `@param array|null $formats = null` Image MIME types in order of preference. `null` asks the `fri_upload_formats` filter for the project default, an empty array switches the formats off for this single call.
+- `@return Html` [Html object](https://doc.nette.org/en/3.0/html-elements) of \<picture\>, or of the \<img\> alone when no format is confirmed.
+
+> Uses `fri_upload_formats`, `fri_upload_format_src`, `fri_upload_picture_sources` and `fri_upload_picture_tag` filters, besides the `fri_upload_img_tag` filter of `getImgTag()`. See [more about WP filters](./wp-filters.md).
+
+Example - formats come from the project default, so the call itself says nothing about them:
+```php
+// Once, in your setup file
+add_filter('fri_upload_formats', fn(): array => ['image/avif', 'image/webp']);
+
+// In a template
+img_upload($logo_id)->pictureTag(img_size(240, 80), ['class' => 'navbar-logo', 'alt' => 'Logo']);
+```
+
+Output:
+```html
+<picture>
+	<source type="image/avif" srcset="https://domain.com/wp-content/uploads/bis-images/2026/10/logo-240x80-c.jpg.avif">
+	<source type="image/webp" srcset="https://domain.com/wp-content/uploads/bis-images/2026/10/logo-240x80-c.jpg.webp">
+	<img
+		src="https://domain.com/wp-content/uploads/bis-images/2026/10/logo-240x80-c.jpg"
+		width="240" height="80"
+		alt="Logo"
+		class="navbar-logo">
+</picture>
+```
+
+> **A single candidate carries no `w` descriptor and no `sizes` attribute.** There is nothing for the browser to choose from, so both would only add bytes. [Pixel densities](./image-sizes.md#pixel-densities) belong to the ImageSizeList, so they don't apply here: when you want a 2x image in a smaller box, declare the larger size and set `width` and `height` yourself.
+
+> The converted files are the project's job here as well, see [where they come from](#where-do-the-converted-files-come-from).
+
+---
 
 ### `getAspectImgTag()` and `aspectImgTag()`
 
@@ -417,7 +459,7 @@ Output:
 </figure>
 ```
 
-> **The \<picture\> is the direct child of the figure**, so CSS which stretches the image to the box has to target `figure.ratio > picture > img` instead of `figure.ratio > img`. Bootstrap's own `.ratio` helper styles the first child, so it needs the same treatment.
+> **The \<picture\> is the direct child of the figure**, so CSS which stretches the image to the box has to target `figure.ratio > picture > img` - **and `figure.ratio > img` as well**, because the wrapper is left out when no format is confirmed. Bootstrap's own `.ratio` helper styles the first child, so it needs the same treatment.
 
 ---
 

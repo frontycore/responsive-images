@@ -162,6 +162,55 @@ class UploadImage extends BaseImage
 	}
 
 	/**
+	 * Get <picture> tag with the <img> of a single size and <source> elements of alternative
+	 * 	image formats, eg. AVIF or WebP.
+	 * 	Handy for images which need one size only - a logo, an avatar or a fixed teaser - where
+	 * 	a responsive srcset has nothing to offer, but the alternative formats still have.
+	 *
+	 * 	The <img> inside is the very same tag getImgTag() returns, including the
+	 * 	`fri_upload_img_tag` filter, and the whole <picture> collapses to it when no format is
+	 * 	confirmed, so switching a template from getImgTag() to this method changes the markup
+	 * 	only where the alternative files really exist.
+	 * @param ImageSize $size
+	 * @param array $attrs Attributes of the <img> tag.
+	 * @param array $pictureAttrs Attributes of the <picture> tag.
+	 * @param array|null $formats Image MIME types in order of preference, eg. ['image/avif'].
+	 * 	Null (default) asks the `fri_upload_formats` filter for the project default, an empty
+	 * 	array switches the formats off for this call.
+	 * @return Html The <picture> tag, or the <img> alone when no format is confirmed.
+	 *
+	 * @see static::getImgTag()
+	 * @see static::getResponsivePictureTag() For an image which needs more sizes.
+	 */
+	public function getPictureTag(ImageSize $size, array $attrs = [], array $pictureAttrs = [], ?array $formats = null): Html
+	{
+		$img = $this->getImgTag($size, $attrs);
+
+		// A single candidate with no `sizes` attribute needs no `w` descriptor at all: there is
+		// nothing for the browser to choose from. The URL is read back from the <img>, so the
+		// sources offer exactly what it ended up with, and the resizer is asked just once.
+		$src = strval($img->src);
+		$candidates = ($src !== '') ? [[$src, 0]] : [];
+
+		$sources = $this->createPictureSources($size, $candidates, '', $formats);
+		return $this->wrapInPicture($img, $sources, $size, $pictureAttrs);
+	}
+
+	/**
+	 * Output <picture> tag of a single size.
+	 * @param ImageSize $size
+	 * @param array $attrs Attributes of the <img> tag.
+	 * @param array $pictureAttrs Attributes of the <picture> tag.
+	 * @param array|null $formats Image MIME types, null asks the `fri_upload_formats` filter.
+	 *
+	 * @see static::getPictureTag()
+	 */
+	public function pictureTag(ImageSize $size, array $attrs = [], array $pictureAttrs = [], ?array $formats = null)
+	{
+		echo $this->getPictureTag($size, $attrs, $pictureAttrs, $formats);
+	}
+
+	/**
 	 * Get <img> tag with responsive sizes and srcset according to given ImageSizeList.
 	 * @param ImageSizeList $sizes
 	 * @param array $attrs
@@ -232,10 +281,10 @@ class UploadImage extends BaseImage
 
 	/**
 	 * Get <picture> tag with the responsive <img> and <source> elements of alternative image formats.
-	 * 	The <picture> element is rendered always, so templates get a stable structure to style,
-	 * 	while sources are rendered only for the formats set by ImageSizeList::setFormats() and
-	 * 	confirmed by the `fri_upload_format_src` filter. Without them the tag holds the very
-	 * 	same <img> as getResponsiveImgTag() returns.
+	 * 	Sources are rendered for the formats set by ImageSizeList::setFormats() or by the
+	 * 	`fri_upload_formats` filter, and only when the `fri_upload_format_src` filter confirms
+	 * 	the file of every single candidate. When no format is confirmed, the method returns the
+	 * 	very same <img> getResponsiveImgTag() would return, without the <picture> wrapper.
 	 *
 	 * 	Beware of lazyloaders: inside <picture> the `srcset` of a <source> wins over the <img>,
 	 * 	so a lazyloader which rewrites attributes of the <img> only would be silently bypassed
@@ -262,7 +311,27 @@ class UploadImage extends BaseImage
 		}
 
 		$sources = $this->createPictureSources($sizes, $candidates, strval($img->sizes));
+		return $this->wrapInPicture($img, $sources, $sizes, $pictureAttrs);
+	}
+
+	/**
+	 * Wrap given <img> in a <picture> tag with given sources.
+	 * 	The wrapper is rendered only when there is at least one <source> to offer. A <picture>
+	 * 	with nothing to choose from would just add a level to the DOM, and a template would have
+	 * 	to style two different structures for one slot - a logo uploaded as SVG has no
+	 * 	alternative formats, the same logo uploaded as PNG has.
+	 * 	The sources filter runs before that decision, so a project can add a source of its own
+	 * 	and still get the wrapper.
+	 * @param Html $img
+	 * @param array|Html[] $sources
+	 * @param ImageSize|ImageSizeList $sizes The size or the list given to the calling method.
+	 * @param array $pictureAttrs Attributes of the <picture> tag.
+	 * @return Html The <picture> tag, or the given <img> when no source is offered.
+	 */
+	private function wrapInPicture(Html $img, array $sources, ImageSize|ImageSizeList $sizes, array $pictureAttrs): Html
+	{
 		$sources = apply_filters('fri_upload_picture_sources', $sources, $sizes, $this);
+		if (count($sources) <= 0) return $img;
 
 		$el = Html::el('picture', $pictureAttrs);
 		foreach ($sources as $source) {
@@ -335,8 +404,9 @@ class UploadImage extends BaseImage
 
 	/**
 	 * Get picture tag wrapped in Bootstrap 5 figure.ratio, which ensures it's aspect ratio.
-	 * 	The <picture> element is the direct child of the figure, so CSS which stretches
-	 * 	the image has to target `figure.ratio > picture > img`.
+	 * 	The <picture> element is the direct child of the figure, so CSS which stretches the
+	 * 	image has to target `figure.ratio > picture > img` - and `figure.ratio > img` as well,
+	 * 	because the wrapper is left out when no image format is confirmed.
 	 * @param int $width Image width from which count ratio.
 	 * @param int $height Image height from which to count ratio.
 	 * @param ImageSizeList $sizes
@@ -522,26 +592,29 @@ class UploadImage extends BaseImage
 	 * 	A source is rendered only when every single candidate is confirmed in the given format,
 	 * 	so the browser never gets a sparser ladder in the format it prefers. Formats are skipped
 	 * 	altogether for SVG and with Auto Cloudinary, which negotiates the format itself.
-	 * @param ImageSizeList $imageSizes
-	 * @param array $candidates Srcset candidates as [0 => URL, 1 => width] pairs.
+	 * @param ImageSize|ImageSizeList $imageSizes The size or the list given to the calling method.
+	 * @param array $candidates Srcset candidates as [0 => URL, 1 => width] pairs. A width of 0
+	 * 	renders the candidate without any descriptor, for a single candidate with no `sizes`.
 	 * @param string $sizesAttr The `sizes` attribute of the <img> tag.
+	 * @param array|null $formats Formats required by the calling method, null to resolve them.
 	 * @return array|Html[]
 	 *
 	 * @see ImageSizeList::setFormats()
 	 * @see static::getFormatSrc()
 	 */
-	private function createPictureSources(ImageSizeList $imageSizes, array $candidates, string $sizesAttr): array
+	private function createPictureSources(ImageSize|ImageSizeList $imageSizes, array $candidates, string $sizesAttr, ?array $formats = null): array
 	{
 		if ($this->isSvg() || function_exists('cloudinary_url')) return [];
 
 		$sources = [];
-		foreach ($imageSizes->getFormats() as $format) {
+		foreach ($this->resolveFormats($imageSizes, $formats) as $format) {
 			$srcsets = [];
 			foreach ($candidates as $candidate) {
 				$src = $this->getFormatSrc(strval($candidate[0]), $format);
 				// An incomplete ladder would be worse than none, so the whole format is left out
 				if ($src === null) continue 2;
-				$srcsets[] = esc_url_raw($src) . ' ' . intval($candidate[1]) . 'w';
+				$width = intval($candidate[1]);
+				$srcsets[] = esc_url_raw($src) . (($width > 0) ? " {$width}w" : '');
 			}
 			if (count($srcsets) <= 0) continue;
 
@@ -550,6 +623,27 @@ class UploadImage extends BaseImage
 			$sources[] = Html::el('source', $attrs);
 		}
 		return $sources;
+	}
+
+	/**
+	 * Resolve the image formats to offer as <picture> sources.
+	 * 	Formats set explicitly win, no matter whether by the argument of the calling method or
+	 * 	by ImageSizeList::setFormats(), so an empty array switches them off for a single call.
+	 * 	When nothing is set, the `fri_upload_formats` filter supplies the project default - at
+	 * 	render time and with the image at hand, so it can decide per image.
+	 * 	Unlike ImageSizeList::setFormats(), the filtered value is not validated: a MIME type
+	 * 	the browser doesn't know only means it skips that source.
+	 * @param ImageSize|ImageSizeList $sizes The size or the list given to the calling method.
+	 * @param array|null $formats Formats required by the calling method, null to resolve them.
+	 * @return array|string[] Image MIME types in order of preference.
+	 *
+	 * @see ImageSizeList::setFormats()
+	 */
+	private function resolveFormats(ImageSize|ImageSizeList $sizes, ?array $formats): array
+	{
+		if ($formats !== null) return $formats;
+		if ($sizes instanceof ImageSizeList && $sizes->hasFormats()) return $sizes->getFormats();
+		return apply_filters('fri_upload_formats', [], $this, $sizes);
 	}
 
 	/**
